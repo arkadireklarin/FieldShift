@@ -203,6 +203,17 @@
   white-space: nowrap;
 }
 
+.pilotArea {
+  margin-top: 0.75rem;
+  border: 1px solid #ded3bb;
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  background: #f8f2e7;
+  color: var(--ink);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
 .mapLoading {
   display: grid;
   place-items: center;
@@ -271,6 +282,37 @@
 }
 
 .choice input { accent-color: var(--green); }
+
+.comparisonInput {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.comparisonToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.comparisonToggle input { accent-color: var(--green); }
+
+.currentRotation {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.currentRotation legend { padding: 0; font-size: 0.82rem; font-weight: 650; }
+.currentRotation p { color: var(--muted); font-size: 0.77rem; }
 
 .analyzeButton {
   display: flex;

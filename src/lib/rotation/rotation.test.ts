@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ClimateMonth, ClimateSummary, FieldSelection } from "../../types/api";
 import { getCropProfile } from "../crops/profiles";
-import { rankRotations } from "./index";
+import { analyzeRotations, rankRotations } from "./index";
 
 const field: FieldSelection = {
   location: { lat: 37.57, lon: 32.77 },
@@ -9,7 +9,7 @@ const field: FieldSelection = {
   irrigation: "unavailable",
 };
 
-function historicalFixture(temperatureC = 20): ClimateSummary {
+function historicalFixture(temperatureC = 20, monthlyRainMm = 40): ClimateSummary {
   const months: ClimateMonth[] = [];
   for (const year of [2024, 2025]) {
     for (let month = 1; month <= 12; month++) {
@@ -17,7 +17,7 @@ function historicalFixture(temperatureC = 20): ClimateSummary {
       months.push({
         month: `${year}-${String(month).padStart(2, "0")}`,
         meanTemperatureC: temperatureC,
-        totalPrecipitationMm: 20,
+        totalPrecipitationMm: monthlyRainMm,
         expectedDays: days,
         temperatureDays: days,
         precipitationDays: days,
@@ -69,9 +69,9 @@ describe("three-cycle rankings", () => {
     const afterLegume = rankRotations(climate, { ...field, previousCrop: "chickpea" }, start);
 
     expect(irrigated[0].score).toBeGreaterThan(rainfed[0].score);
-    expect(rainfed[0].transitions[0].code).toBe("CEREAL_TO_LEGUME");
-    expect(afterLegume[0].transitions[0].code).toBe("LEGUME_TO_CEREAL");
-    expect(afterLegume[0].cycles[0]).not.toBe(rainfed[0].cycles[0]);
+    expect(rainfed[0].transitions[0].from).toBe("wheat");
+    expect(afterLegume[0].transitions[0].from).toBe("chickpea");
+    expect(afterLegume.map(({ cycles, score }) => [cycles, score])).not.toEqual(rainfed.map(({ cycles, score }) => [cycles, score]));
   });
 
   it("waits for the next legal planting window and avoids overlap with winter harvests", () => {
@@ -99,7 +99,7 @@ describe("three-cycle rankings", () => {
     expect(rankRotations({ ...climate, months: climate.months.slice(0, 1) }, field, { year: 2026, month: 12 })).toEqual([]);
   });
 
-  it("excludes crops with zero modeled temperature fit but allows missing temperature", () => {
+  it("requires complete temperature evidence and excludes crops with zero modeled temperature fit", () => {
     const start = { year: 2026, month: 12 };
     expect(rankRotations(historicalFixture(-30), field, start)).toEqual([]);
     const climate = historicalFixture();
@@ -107,6 +107,90 @@ describe("three-cycle rankings", () => {
       month.meanTemperatureC = null;
       month.temperatureDays = 0;
     }
-    expect(rankRotations(climate, field, start)).toHaveLength(3);
+    expect(rankRotations(climate, field, start)).toEqual([]);
+  });
+
+  it("withholds rainfed plans with zero seasonal water supply", () => {
+    expect(rankRotations(historicalFixture(20, 0), field, { year: 2026, month: 12 })).toEqual([]);
+  });
+});
+
+describe("rotation search priorities", () => {
+  const start = { year: 2027, month: 1 };
+
+  it("finds earlier harvest and more diverse choices outside the highest three scores", () => {
+    const climate = historicalFixture(9, 45);
+    const irrigatedField = { ...field, previousCrop: "sunflower", irrigation: "available" } as const;
+    const { rotations, strategies } = analyzeRotations(climate, irrigatedField, start);
+    expect(rotations).toEqual(rankRotations(climate, irrigatedField, start));
+    expect(strategies.map(({ priorities }) => priorities)).toEqual([
+      ["historical-fit"], ["early-harvest"], ["family-diversity"],
+    ]);
+
+    const [historical, early, diverse] = strategies;
+    expect(historical.plan).toEqual(rotations[0]);
+    expect(historical.calendar.schedule[0].harvestMonth).toBe("2028-07");
+    expect(rotations).not.toContainEqual(early.plan);
+    expect(early.plan.cycles).toEqual(["lentil", "barley", "chickpea"]);
+    expect(early.calendar.schedule[0].harvestMonth).toBe("2027-07");
+    expect(early.calendar.totalMonths).toBe(32);
+    expect(rotations).not.toContainEqual(diverse.plan);
+    expect(diverse.plan.cycles).toEqual(["lentil", "barley", "sunflower"]);
+    expect(diverse.calendar.distinctFamilyCount).toBe(3);
+    expect(diverse.calendar.schedule.map(({ crop }) => crop)).toEqual(diverse.plan.cycles);
+  });
+
+  it("groups all priorities when the same sequence wins", () => {
+    const { rotations, strategies } = analyzeRotations(historicalFixture(35), { ...field, irrigation: "available" }, start);
+    expect(strategies).toHaveLength(1);
+    expect(strategies[0].priorities).toEqual(["historical-fit", "early-harvest", "family-diversity"]);
+    expect(strategies[0].plan).toEqual(rotations[0]);
+  });
+
+  it("returns no priority winners when there are no eligible rotations", () => {
+    expect(analyzeRotations(historicalFixture(-30), field, start)).toEqual({ rotations: [], strategies: [] });
+  });
+
+  it("replays the driest year with the same deadline and shares ranks across tied scores", () => {
+    const climate = historicalFixture(20, 20);
+    for (const month of climate.months) {
+      if (month.month.startsWith("2025")) month.totalPrecipitationMm = 5;
+    }
+    const fieldWithDeadline = { ...field, latestFirstHarvest: "2027-07", irrigation: "available" } as const;
+    const result = analyzeRotations(climate, fieldWithDeadline, start);
+    expect(result.harvestDeadline).toEqual({
+      month: "2027-07", matchingCount: 20, candidateCount: 120, earliestPossibleMonth: "2027-07",
+    });
+    expect(result.rotationStressTest).toMatchObject({ year: 2025, precipitationMm: 60, medianPrecipitationMm: 150 });
+    const replay = result.rotationStressTest!;
+    const pick = replay.plans.find(({ isRobustPick }) => isRobustPick)!;
+    expect(pick.dryYearScore).toBeLessThan(pick.historicalScore);
+    expect(replay.plans.filter(({ isRobustPick }) => isRobustPick)).toHaveLength(1);
+    for (const entry of replay.plans) {
+      if (entry.historicalScore === pick.historicalScore) expect(entry.historicalRank).toBe(pick.historicalRank);
+      if (entry.dryYearScore === pick.dryYearScore) expect(entry.dryYearRank).toBe(pick.dryYearRank);
+    }
+    expect(result.strategies.every(({ calendar }) => calendar.schedule[0].harvestMonth <= "2027-07")).toBe(true);
+  });
+
+  it("checks the same candidates against historical and replay quotas without hiding the calendar baseline", () => {
+    const climate = historicalFixture(20, 50);
+    for (const month of climate.months) {
+      if (month.month.startsWith("2025")) month.totalPrecipitationMm = 15;
+    }
+    const fieldWithQuota = {
+      ...field, latestFirstHarvest: "2027-07", irrigation: "available", irrigationQuotaM3PerDa: 350,
+    } as const;
+    const result = analyzeRotations(climate, fieldWithQuota, start);
+    expect(result.irrigationQuota).toMatchObject({ candidateCount: 20, matchingCount: 0, dryYearMatchingCount: 0 });
+    expect(result.irrigationQuota?.minimumRequiredM3PerDa).toBeGreaterThan(350);
+    expect(result.calendarBenchmark).toMatchObject({ baseline: { meetsDeadline: true, fitsQuota: true, dryYearFitsQuota: false } });
+    expect(result.calendarBenchmark?.selected).toBeUndefined();
+    expect(result.rotations).toEqual([]);
+
+    const relaxed = analyzeRotations(climate, { ...fieldWithQuota, irrigationQuotaM3PerDa: 600 }, start);
+    expect(relaxed.rotations.length).toBeGreaterThan(0);
+    expect(relaxed.calendarBenchmark?.selected?.dryYearWaterM3PerDa).toBeLessThanOrEqual(600);
+    expect(relaxed.calendarBenchmark?.baseline.calendar).toEqual(result.calendarBenchmark?.baseline.calendar);
   });
 });

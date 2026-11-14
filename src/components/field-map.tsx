@@ -13,6 +13,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { SERVICE_REGIONS } from "@/lib/regions";
 import type { Coordinates } from "@/types/api";
 import styles from "./field-map.module.css";
 
@@ -195,6 +196,13 @@ export default function FieldMap({
           />
           <ZoomControl position="topright" />
           <MapClicks onClick={choosePoint} />
+          {SERVICE_REGIONS.map(({ id, boundary }) => (
+            <Polygon
+              key={id}
+              positions={boundary.map(({ lat, lon }) => [lat, lon])}
+              pathOptions={{ color: "#fbeeab", weight: 2, dashArray: "6 6", fill: false, interactive: false }}
+            />
+          ))}
           <Marker
             position={[location.lat, location.lon]}
             icon={FIELD_POINT}

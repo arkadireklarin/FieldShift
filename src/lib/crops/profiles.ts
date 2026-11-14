@@ -21,12 +21,17 @@ export interface AgronomicCropProfile extends CropProfile {
   };
   /** Provisional preferred air-temperature band for screening during active growth. */
   temperatureC: Range;
-  /** Approximate seasonal crop water use in mm, including sources other than rain. */
+  /** Approximate seasonal crop water use in mm, including sources other than rain. The upper value is use without water stress. */
   waterRequirementMm: Range;
   /** Provisional preferred pH band, when supported by a reference. */
   soilPh: Range | null;
   /** Relative response to water deficits assumed in the demo's regional context. */
   irrigationSensitivity: "low" | "medium" | "high";
+  /**
+   * Seasonal yield response factor Ky from FAO-33. A value above 1 means yield falls faster than water use.
+   * Analog values borrow the closest listed crop.
+   */
+  yieldResponseKy: { value: number; basis: "regional_trial" | "reference" | "analog"; source: string };
   rootCharacteristics: string | null;
   /** Confidence in using these references for regional screening. */
   dataConfidence: "low" | "moderate";

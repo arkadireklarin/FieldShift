@@ -2,12 +2,16 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { Coordinates, CropId, FieldSelection, RecommendResponse } from "@/types/api";
+import type { Coordinates, CropId, FieldSelection, RecommendResponse, RotationCycle } from "@/types/api";
 import ClimatePanel from "./climate-panel";
 import RecommendationPanel from "./recommendation-panel";
-import { cropLabels } from "./crop-labels";
+import { cropLabels, rotationCycleLabels } from "./crop-labels";
 import { DashboardIcon } from "./dashboard-icon";
+import DecisionFeedback from "./decision-feedback";
+import { initialIntentLabels, isParticipantCode, participantCodePattern, type InitialIntent } from "./decision-feedback-export";
 import { requestRecommendation, type RequestState } from "./field-api";
+import PlanBudgetPanel from "./plan-budget-panel";
+import { describeApplicability, findServiceRegion } from "@/lib/regions";
 import type { DevelopmentFixture } from "./dev/field-fixture";
 import styles from "./field-dashboard.module.css";
 
@@ -41,6 +45,12 @@ export default function FieldDashboard() {
   const [previousCrop, setPreviousCrop] = useState<CropId | "">("");
   const [irrigation, setIrrigation] = useState<FieldSelection["irrigation"] | "">("");
   const [soilPh, setSoilPh] = useState("");
+  const [compareCurrent, setCompareCurrent] = useState(false);
+  const [currentCycles, setCurrentCycles] = useState<[RotationCycle | "", RotationCycle | "", RotationCycle | ""]>(["", "", ""]);
+  const [pilotEnabled, setPilotEnabled] = useState(false);
+  const [participantCode, setParticipantCode] = useState("");
+  const [initialIntent, setInitialIntent] = useState<InitialIntent | "">("");
+  const [pilotSession, setPilotSession] = useState<{ participantCode: string; initialIntent: InitialIntent }>();
   const [analysis, setAnalysis] = useState<RequestState<RecommendResponse>>({ status: "idle" });
   const [fixture, setFixture] = useState<DevelopmentFixture>();
   const [fixtureError, setFixtureError] = useState(false);
@@ -53,6 +63,7 @@ export default function FieldDashboard() {
     activeRequest.current?.abort();
     activeRequest.current = null;
     setAnalysis({ status: "idle" });
+    setPilotSession(undefined);
     setFixture(undefined);
     setFixtureError(false);
   }
@@ -64,6 +75,21 @@ export default function FieldDashboard() {
     const field: FieldSelection = { location, previousCrop, irrigation };
     if (polygon.length > 0) field.polygon = polygon;
     if (soilPh !== "") field.measuredSoilPh = Number(soilPh);
+    const latestFirstHarvest = new FormData(event.currentTarget).get("latestFirstHarvest");
+    if (typeof latestFirstHarvest === "string" && latestFirstHarvest) field.latestFirstHarvest = latestFirstHarvest;
+    const irrigationQuota = new FormData(event.currentTarget).get("irrigationQuota");
+    if (irrigation === "available" && typeof irrigationQuota === "string" && irrigationQuota !== "") {
+      field.irrigationQuotaM3PerDa = Number(irrigationQuota);
+    }
+    if (compareCurrent) {
+      const [first, second, third] = currentCycles;
+      if (!first || !second || !third) return;
+      field.currentRotation = [first, second, third];
+    }
+    if (compareCurrent && pilotEnabled) {
+      if (!initialIntent || !isParticipantCode(participantCode)) return;
+      setPilotSession({ participantCode, initialIntent });
+    }
 
     setFixture(undefined);
     setFixtureError(false);
@@ -108,6 +134,7 @@ export default function FieldDashboard() {
   const result = analysis.status === "success" ? analysis.data : undefined;
   const error = analysis.status === "error" ? analysis.error : undefined;
   const selectedCoordinates = `${formatCoordinate(location.lat, "N", "S")} · ${formatCoordinate(location.lon, "E", "W")}`;
+  const outsidePilotArea = findServiceRegion(location) ? undefined : describeApplicability(undefined).message;
 
   return (
     <div className={styles.workspace}>
@@ -164,6 +191,7 @@ export default function FieldDashboard() {
                 setPolygon(ring);
               }}
             />
+            {outsidePilotArea && <p className={styles.pilotArea} role="status">{outsidePilotArea}</p>}
           </article>
 
           <article className={`${styles.card} ${styles.formCard}`}>
@@ -202,6 +230,14 @@ export default function FieldDashboard() {
                   ))}
                 </div>
               </fieldset>
+              {irrigation === "available" && (
+                <label className={styles.fieldLabel}>
+                  <span className={styles.labelRow}>Seasonal irrigation quota <span>Optional</span></span>
+                  <input type="number" id="irrigation-quota" name="irrigationQuota" min="0" max="10000" step="any"
+                    inputMode="decimal" placeholder="Net m³ per decare" aria-describedby="quota-help" onInput={resetAnalysis} />
+                  <small id="quota-help">Enter the water that can reach the roots in each crop season, after delivery losses. 1 mm over 1 decare equals 1 m³.</small>
+                </label>
+              )}
               <label className={styles.fieldLabel}>
                 <span className={styles.labelRow}>Measured soil pH <span>Optional</span></span>
                 <input type="number" name="soilPh" min="0" max="14" step="any" inputMode="decimal"
@@ -211,6 +247,76 @@ export default function FieldDashboard() {
                   }} />
                 <small id="ph-help">Leave blank if you don’t have a measurement.</small>
               </label>
+              <label className={styles.fieldLabel}>
+                <span className={styles.labelRow}>Latest acceptable first harvest <span>Optional</span></span>
+                <input type="month" id="latest-first-harvest" name="latestFirstHarvest" min="1900-01" max="2199-12"
+                  pattern="(?:19|20|21)[0-9]{2}-(?:0[1-9]|1[0-2])" placeholder="YYYY-MM"
+                  aria-describedby="harvest-deadline-help" onInput={resetAnalysis} />
+                <small id="harvest-deadline-help">Plans with a first harvest after this month are excluded.</small>
+              </label>
+              <div className={styles.comparisonInput}>
+                <label className={styles.comparisonToggle}>
+                  <input type="checkbox" checked={compareCurrent} onChange={(event) => {
+                    resetAnalysis();
+                    setCompareCurrent(event.target.checked);
+                    if (!event.target.checked) setPilotEnabled(false);
+                  }} />
+                  Compare with my current rotation
+                </label>
+                {compareCurrent && (
+                  <fieldset className={styles.currentRotation} aria-describedby="current-rotation-help">
+                    <legend>Next three cycles in your current plan</legend>
+                    <p id="current-rotation-help">Enter what you would normally plant next. You can repeat crops or choose a 12-month fallow cycle.</p>
+                    {currentCycles.map((cycle, index) => (
+                      <label className={styles.fieldLabel} key={index}>
+                        Current cycle {index + 1}
+                        <select required value={cycle} onChange={(event) => {
+                          resetAnalysis();
+                          const updated: typeof currentCycles = [...currentCycles];
+                          updated[index] = event.target.value as RotationCycle | "";
+                          setCurrentCycles(updated);
+                        }}>
+                          <option value="" disabled>Select crop or fallow</option>
+                          {Object.entries(rotationCycleLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                        </select>
+                      </label>
+                    ))}
+                    <label className={styles.comparisonToggle}>
+                      <input type="checkbox" checked={pilotEnabled} onChange={(event) => {
+                        resetAnalysis();
+                        setPilotEnabled(event.target.checked);
+                        setParticipantCode("");
+                        setInitialIntent("");
+                      }} />
+                      Record a pilot session
+                    </label>
+                    {pilotEnabled && (
+                      <fieldset className={styles.currentRotation} aria-describedby="pilot-intent-help">
+                        <legend>Before viewing the results</legend>
+                        <p id="pilot-intent-help">Use a study code such as C-01 in place of a name. Pilot answers stay in this browser until exported.</p>
+                        <label className={styles.fieldLabel}>
+                          Participant code
+                          <input type="text" required pattern={participantCodePattern} maxLength={24}
+                            value={participantCode} onChange={(event) => {
+                              resetAnalysis();
+                              setParticipantCode(event.target.value);
+                            }} />
+                        </label>
+                        <label className={styles.fieldLabel}>
+                          Initial intention
+                          <select required value={initialIntent} onChange={(event) => {
+                            resetAnalysis();
+                            setInitialIntent(event.target.value as InitialIntent | "");
+                          }}>
+                            <option value="" disabled>Select an intention</option>
+                            {Object.entries(initialIntentLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                          </select>
+                        </label>
+                      </fieldset>
+                    )}
+                  </fieldset>
+                )}
+              </div>
               <button className={styles.analyzeButton} disabled={loading} type="submit">
                 {loading ? "Analyzing field…" : "Analyze field"} <DashboardIcon name="arrow" size={18} />
               </button>
@@ -218,12 +324,14 @@ export default function FieldDashboard() {
                 <p className={styles.formStatus} role="status">
                   {loading ? "Requesting climate history and crop analysis…" : (
                     <>{error ? "Analysis unavailable." : "Analysis complete."}{" "}
-                    <a href="#climate">Review details</a>.</>
+                    {result?.rotationComparison || result?.harvestDeadline || result?.irrigationQuota
+                      ? <a href="#rotation">Compare rotations</a>
+                      : <a href="#climate">Review details</a>}.</>
                   )}
                 </p>
               )}
             </form>
-            {process.env.NODE_ENV === "development" && (
+            {process.env.NODE_ENV === "development" && !pilotEnabled && (
               <div className={styles.devControls}>
                 <button type="button" onClick={fixture ? resetAnalysis : showFixture}>
                   {fixture ? "Clear example data" : "Preview synthetic example"}
@@ -255,6 +363,21 @@ export default function FieldDashboard() {
             isFixture={Boolean(fixture)}
             soilPhKnown={fixture ? undefined : soilPh !== ""}
           />
+          {result && !fixture && (
+            <PlanBudgetPanel result={result} irrigated={irrigation === "available"} />
+          )}
+          {result?.rotationComparison && pilotSession && (
+            <DecisionFeedback
+              comparison={result.rotationComparison}
+              strategies={result.rotationStrategies}
+              robustPlan={result.rotationStressTest?.robustPlan}
+              harvestDeadline={result.harvestDeadline?.month}
+              irrigationQuota={result.irrigationQuota?.limitM3PerDa}
+              provenance={result.climate.provenance}
+              participantCode={pilotSession.participantCode}
+              initialIntent={pilotSession.initialIntent}
+            />
+          )}
         </div>
       </main>
     </div>

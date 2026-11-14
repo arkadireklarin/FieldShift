@@ -1,4 +1,4 @@
-import type { CropId } from "@/types/api";
+import type { CropId, RotationCycle } from "@/types/api";
 
 export const cropLabels: Record<CropId, string> = {
   wheat: "Wheat",
@@ -7,4 +7,9 @@ export const cropLabels: Record<CropId, string> = {
   lentil: "Lentil",
   sunflower: "Sunflower",
   maize: "Maize",
+};
+
+export const rotationCycleLabels: Record<RotationCycle, string> = {
+  ...cropLabels,
+  fallow: "Fallow",
 };

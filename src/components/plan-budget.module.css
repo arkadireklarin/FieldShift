@@ -1,0 +1,130 @@
+.budget {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 2rem;
+  scroll-margin-top: 5.5rem;
+}
+
+.budget h2 {
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.description,
+.entry p,
+.sequence,
+.pending {
+  color: var(--muted);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.description a {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.entries,
+.plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.65rem;
+}
+
+.entry,
+.plan {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--surface);
+}
+
+.entry legend,
+.plan h3 {
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.entry legend {
+  padding-inline: 0.3rem;
+}
+
+.entry label {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.field input,
+.entry select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #c9d5c9;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.field span {
+  flex: none;
+  min-width: 3rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.metrics {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.metrics div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.15rem 0.75rem;
+}
+
+.metrics dt {
+  color: var(--muted);
+}
+
+.metrics dd {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.margin {
+  border-top: 1px solid var(--line);
+  padding-top: 0.3rem;
+}
+
+.margin + .margin {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.margin dd {
+  color: var(--green);
+}
+
+.margin[data-loss] dd {
+  color: #a4472f;
+}

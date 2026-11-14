@@ -1,0 +1,148 @@
+.deadline,
+.stress {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.deadline {
+  border: 1px solid #b7cbbb;
+  border-radius: 0.8rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--green-soft);
+}
+
+.deadline[data-unmet] {
+  border-color: #ded3bb;
+  background: #f8f2e7;
+}
+
+.deadline h3,
+.stress h3 {
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.deadline p,
+.description {
+  color: var(--muted);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.deadline strong,
+.description strong {
+  color: var(--ink);
+}
+
+.stress {
+  scroll-margin-top: 5.5rem;
+}
+
+.plans {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.plan {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  align-items: start;
+  gap: 0.6rem 0.85rem;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--surface);
+}
+
+.planName {
+  display: grid;
+  justify-items: start;
+  gap: 0.16rem;
+}
+
+.planName h4 {
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.planName p {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.planName .robust {
+  margin-top: 0.2rem;
+  border-radius: 0.4rem;
+  padding: 0.15rem 0.45rem;
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 700;
+}
+
+.ranks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.ranks > div {
+  min-width: 0;
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--canvas);
+}
+
+.ranks dt {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.ranks dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.45rem;
+  margin-top: 0.2rem;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
+.calendar {
+  grid-column: 1 / -1;
+  color: var(--ink);
+  font-size: 0.8rem;
+}
+
+.calendar summary {
+  width: fit-content;
+  color: var(--green);
+  font-weight: 650;
+}
+
+.calendar ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 0.4rem 0.65rem;
+  margin-top: 0.4rem;
+}
+
+.calendar ol span {
+  display: block;
+  color: var(--muted);
+}
+
+.calendar time {
+  white-space: nowrap;
+}
+.deadline a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}

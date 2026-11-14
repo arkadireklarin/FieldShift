@@ -1,11 +1,10 @@
-import type { ClimateSummary, CropSuitability, FieldSelection } from "../../types/api";
+import type { ClimateSummary, CropFeasibility, CropSuitability, FieldSelection } from "../../types/api";
 import type { AgronomicCropProfile } from "./profiles";
+import { assessWaterBalance, MIN_RAINFED_RELATIVE_YIELD } from "./water-balance";
 
 type FactorCode =
   | "ACTIVE_SEASON_TEMPERATURE"
-  | "GROWING_SEASON_PRECIPITATION"
-  | "IRRIGATION_AVAILABLE"
-  | "RAINFED"
+  | "SEASONAL_WATER_BALANCE"
   | "MEASURED_SOIL_PH"
   | "SAME_CROP_REPETITION"
   | "SAME_FAMILY_REPETITION"
@@ -17,11 +16,11 @@ type WarningCode =
   | "TEMPERATURE_COVERAGE_INSUFFICIENT"
   | "TEMPERATURE_SEASONS_EXCLUDED"
   | "TEMPERATURE_OUTSIDE_MODEL_RANGE"
-  | "PRECIPITATION_COVERAGE_INSUFFICIENT"
-  | "PRECIPITATION_SEASONS_EXCLUDED"
+  | "WATER_COVERAGE_INSUFFICIENT"
+  | "WATER_SEASONS_EXCLUDED"
   | "SOIL_PH_NOT_PROVIDED"
   | "PROFILE_SOIL_PH_UNAVAILABLE"
-  | "LOW_RAINFED_WATER_COVERAGE"
+  | "WATER_DEFICIT_WITHOUT_IRRIGATION"
   | "INSUFFICIENT_CLIMATE_EVIDENCE";
 
 export interface SuitabilityFactor {
@@ -33,6 +32,7 @@ export interface SuitabilityFactor {
 }
 
 export interface SuitabilityResult extends CropSuitability {
+  feasibility: CropFeasibility;
   factors: ReadonlyArray<SuitabilityFactor & {
     /** Effective share of the total after omitted factors are excluded. */
     weight: number;
@@ -42,18 +42,15 @@ export interface SuitabilityResult extends CropSuitability {
   warnings: ReadonlyArray<{ code: WarningCode; message: string }>;
 }
 
-const WEIGHTS = { temperature: 35, precipitation: 25, irrigation: 20, soilPh: 10, previousCrop: 10 };
-
-const IRRIGATION_SCORES = {
-  low: { available: 85, unavailable: 75 },
-  medium: { available: 90, unavailable: 55 },
-  high: { available: 100, unavailable: 20 },
-} as const;
+const WEIGHTS = { temperature: 35, water: 45, soilPh: 10, previousCrop: 10 };
+// Retain sensitivity to inherent water stress while crediting irrigation capacity separately.
+const IRRIGATED_RAINFED_WEIGHT = 25 / WEIGHTS.water;
 
 const LIMITATIONS = [
   "Crop response ranges, planting calendars and factor weights are provisional heuristics.",
   "Monthly mean air temperatures can mask heat, frost and other short-lived stress.",
-  "Seasonal rainfall is compared with approximate crop water demand as a proxy. Effective rainfall, soil water storage and irrigation amounts are unknown.",
+  "The seasonal water balance treats in-season rain as available and estimates preseason soil storage. Actual effective rainfall, field storage, crop water use and irrigation efficiency are unknown.",
+  "Rainfed yield share is a screening indicator relative to water-unlimited yield. Other yield constraints and short-lived water stress are outside the water model.",
 ];
 
 type MonthSample = { value: number; days: number };
@@ -65,11 +62,10 @@ function monthIndex(date: string): number {
   return Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1;
 }
 
-function completeSeasons(
+function completeTemperatureSeasons(
   climate: SuitabilityClimate,
   startMonth: number,
   endMonth: number,
-  metric: "temperature" | "precipitation",
 ) {
   const firstMonth = monthIndex(climate.provenance.period.start);
   const lastMonth = monthIndex(climate.provenance.period.end);
@@ -86,8 +82,7 @@ function completeSeasons(
     for (let offset = 0; offset < length; offset++) {
       const month = months.get(start + offset);
       if (!month) break;
-      const value = metric === "temperature" ? month.meanTemperatureC : month.totalPrecipitationMm;
-      const days = metric === "temperature" ? month.temperatureDays : month.precipitationDays;
+      const { meanTemperatureC: value, temperatureDays: days } = month;
       if (value === null || !Number.isFinite(value) || days <= 0 || days !== month.expectedDays) break;
       samples.push({ value, days });
     }
@@ -143,16 +138,22 @@ export function assessCropSuitability(
   field: Pick<FieldSelection, "irrigation" | "measuredSoilPh">,
   previousCrop?: AgronomicCropProfile,
 ): SuitabilityResult {
-  const { calendar, temperatureC, waterRequirementMm, soilPh, irrigationSensitivity } = crop;
+  const { calendar, temperatureC, soilPh } = crop;
   const weightedFactors: { factor: SuitabilityFactor; weight: number }[] = [];
   const warnings: { code: WarningCode; message: string }[] = [];
-  const temperature = completeSeasons(climate, calendar.activeStartMonth, calendar.activeEndMonth, "temperature");
-  const precipitation = completeSeasons(climate, calendar.growingStartMonth, calendar.growingEndMonth, "precipitation");
+  const exclusions: Array<CropFeasibility["reasons"][number]> = [];
+  const temperature = completeTemperatureSeasons(climate, calendar.activeStartMonth, calendar.activeEndMonth);
+  const water = assessWaterBalance(crop, climate);
+  // A gap can hide a poor season, so each climate metric needs at least half of its expected seasons.
+  const temperatureSufficient = temperature.seasons.length > 0 &&
+    temperature.seasons.length >= Math.ceil(temperature.expected / 2);
 
-  if (temperature.seasons.length === 0) {
+  if (!temperatureSufficient) {
     warnings.push({
       code: "TEMPERATURE_COVERAGE_INSUFFICIENT",
-      message: "Temperature was omitted because no active growing season has complete observations.",
+      message: temperature.seasons.length === 0
+        ? "No active growing season has complete temperature observations."
+        : `Temperature coverage is complete for ${temperature.seasons.length} of ${temperature.expected} active seasons. At least half must be complete.`,
     });
   } else {
     const samples = temperature.seasons.flat();
@@ -166,10 +167,12 @@ export function assessCropSuitability(
       explanation: `Mean temperature was ${mean.toFixed(1)} °C across ${temperature.seasons.length} complete active season(s). Each monthly mean is scored against the ${temperatureC.min}–${temperatureC.max} °C band and weighted by observed days. Fit declines linearly to zero at 12 °C outside the band.`,
     } });
     if (score === 0) {
-      warnings.push({
+      const reason = {
         code: "TEMPERATURE_OUTSIDE_MODEL_RANGE",
-        message: "Every scored active-season month was outside this crop's modeled temperature range. This crop is excluded from rotation plans.",
-      });
+        message: "Every scored active-season month was beyond the crop's modeled temperature tolerance.",
+      } as const;
+      exclusions.push(reason);
+      warnings.push(reason);
     }
     if (temperature.seasons.length < temperature.expected) {
       warnings.push({
@@ -179,44 +182,46 @@ export function assessCropSuitability(
     }
   }
 
-  if (precipitation.seasons.length === 0) {
+  if (!water.sufficient) {
     warnings.push({
-      code: "PRECIPITATION_COVERAGE_INSUFFICIENT",
-      message: "Precipitation was omitted because no growing season has complete observations.",
+      code: "WATER_COVERAGE_INSUFFICIENT",
+      message: water.expectedSeasons === 0
+        ? "The climate record is too short to cover a full water year for this crop."
+        : `Rainfall coverage is complete for ${water.balance?.seasons ?? 0} of ${water.expectedSeasons} water years. At least half must be complete.`,
     });
-  } else {
-    const totals = precipitation.seasons.map((season) => season.reduce((sum, sample) => sum + sample.value, 0));
-    const mean = totals.reduce((sum, total) => sum + total, 0) / totals.length;
-    const score = totals.reduce((sum, total) => sum + 100 * Math.min(1, Math.max(0, total / waterRequirementMm.min)), 0) / totals.length;
-    weightedFactors.push({ weight: WEIGHTS.precipitation, factor: {
-      code: "GROWING_SEASON_PRECIPITATION",
-      label: "Growing-season precipitation",
-      score,
-      explanation: `NASA POWER rainfall averaged ${mean.toFixed(1)} mm across ${totals.length} complete growing season(s). This factor averages each season's share of the lower crop water requirement (${waterRequirementMm.min} mm of a provisional ${waterRequirementMm.min}–${waterRequirementMm.max} mm range), capped at 100%.`,
-    } });
-    if (precipitation.seasons.length < precipitation.expected) {
-      warnings.push({
-        code: "PRECIPITATION_SEASONS_EXCLUDED",
-        message: `Rainfall coverage was incomplete for ${precipitation.expected - precipitation.seasons.length} growing season(s). Those seasons were excluded.`,
-      });
-    }
-    if (score < 50 && field.irrigation === "unavailable") {
-      warnings.push({
-        code: "LOW_RAINFED_WATER_COVERAGE",
-        message: "Historical rainfall alone covered less than half of the lower crop water requirement on the model's seasonal coverage scale.",
-      });
-    }
   }
 
   const irrigated = field.irrigation === "available";
-  weightedFactors.push({ weight: WEIGHTS.irrigation, factor: {
-    code: irrigated ? "IRRIGATION_AVAILABLE" : "RAINFED",
-    label: "Irrigation availability",
-    score: IRRIGATION_SCORES[irrigationSensitivity][field.irrigation],
-    explanation: irrigated
-      ? `Irrigation is available. ${crop.name} has a provisional ${irrigationSensitivity} sensitivity to water stress. The amount of water available is unknown.`
-      : `The field is rainfed. ${crop.name} has a provisional ${irrigationSensitivity} sensitivity to water stress.`,
-  } });
+  if (water.sufficient && water.balance) {
+    const { rainfedRelativeYield, netIrrigationRequirementMm, seasons } = water.balance;
+    const rainfedPercentage = 100 * rainfedRelativeYield;
+    const score = irrigated
+      ? rainfedPercentage * IRRIGATED_RAINFED_WEIGHT + 100 * (1 - IRRIGATED_RAINFED_WEIGHT)
+      : rainfedPercentage;
+    const explanation = `Across ${seasons} complete water year(s), the model estimates rainfed yield at ${rainfedPercentage.toFixed(1)}% of water-unlimited yield. Net irrigation to meet full demand averages ${netIrrigationRequirementMm.toFixed(1)} mm per season.`;
+    weightedFactors.push({ weight: WEIGHTS.water, factor: {
+      code: "SEASONAL_WATER_BALANCE",
+      label: "Seasonal water balance",
+      score,
+      explanation: irrigated
+        ? `${explanation} The score credits potential irrigation only if the full modeled supplement can be delivered.`
+        : explanation,
+    } });
+    if (seasons < water.expectedSeasons) {
+      warnings.push({
+        code: "WATER_SEASONS_EXCLUDED",
+        message: `Rainfall coverage was incomplete for ${water.expectedSeasons - seasons} water year(s). Those years were excluded.`,
+      });
+    }
+    if (!irrigated && rainfedRelativeYield < MIN_RAINFED_RELATIVE_YIELD) {
+      const reason = {
+        code: "WATER_DEFICIT_WITHOUT_IRRIGATION",
+        message: `Modeled rainfed yield share is ${rainfedPercentage.toFixed(1)}%, below the provisional ${100 * MIN_RAINFED_RELATIVE_YIELD}% screening threshold.`,
+      } as const;
+      exclusions.push(reason);
+      warnings.push(reason);
+    }
+  }
 
   const measuredPh = field.measuredSoilPh;
   if (measuredPh === undefined || !Number.isFinite(measuredPh) || measuredPh < 0 || measuredPh > 14) {
@@ -236,9 +241,17 @@ export function assessCropSuitability(
     weightedFactors.push({ weight: WEIGHTS.previousCrop, factor: assessCropTransition(previousCrop, crop) });
   }
 
-  const hasClimateEvidence = temperature.seasons.length > 0 || precipitation.seasons.length > 0;
-  if (!hasClimateEvidence) {
-    warnings.push({ code: "INSUFFICIENT_CLIMATE_EVIDENCE", message: "At least one complete seasonal climate metric is required to score this crop." });
+  const hasClimateEvidence = temperatureSufficient && water.sufficient;
+  let feasibility: CropFeasibility;
+  if (hasClimateEvidence) {
+    feasibility = { status: exclusions.length ? "excluded" : "feasible", reasons: exclusions };
+  } else {
+    const reason = {
+      code: "INSUFFICIENT_CLIMATE_EVIDENCE",
+      message: "Scoring requires complete temperature and rainfall for at least half of the seasons on record.",
+    } as const;
+    warnings.push(reason);
+    feasibility = { status: "unscored", reasons: [reason, ...exclusions] };
   }
 
   const weightTotal = weightedFactors.reduce((total, entry) => total + entry.weight, 0);
@@ -251,6 +264,8 @@ export function assessCropSuitability(
   return {
     crop: crop.id,
     score: hasClimateEvidence ? Math.round(50 + factors.reduce((total, factor) => total + factor.scoreDelta, 0)) : null,
+    feasibility,
+    water: water.balance,
     factors,
     warnings,
     limitations: [...LIMITATIONS, ...crop.limitations, ...warnings.map((warning) => warning.message)],

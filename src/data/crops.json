@@ -17,6 +17,7 @@
     "waterRequirementMm": { "min": 450, "max": 650 },
     "soilPh": { "min": 6, "max": 7 },
     "irrigationSensitivity": "medium",
+    "yieldResponseKy": { "value": 1.05, "basis": "reference", "source": "FAO Irrigation and Drainage Paper 56, table 24, winter wheat" },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 1.5–1.8 m for winter wheat in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [
@@ -49,6 +50,7 @@
     "waterRequirementMm": { "min": 450, "max": 650 },
     "soilPh": { "min": 6.5, "max": 7.5 },
     "irrigationSensitivity": "medium",
+    "yieldResponseKy": { "value": 1.05, "basis": "analog", "source": "FAO Irrigation and Drainage Paper 56, table 24. Barley is not listed, so the winter wheat value is used as the closest autumn-sown cereal." },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 1.0–1.5 m in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [
@@ -81,6 +83,7 @@
     "waterRequirementMm": { "min": 300, "max": 560 },
     "soilPh": { "min": 6, "max": 8.5 },
     "irrigationSensitivity": "medium",
+    "yieldResponseKy": { "value": 0.85, "basis": "regional_trial", "source": "Tarı and Bahçeci (2022), early sowing in Konya. Late sowing gave 0.91." },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 0.6–1.0 m in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [
@@ -90,7 +93,7 @@
     "references": [
       { "title": "Trakya Agricultural Research Institute, chickpea cultivation and sowing window in Türkiye", "url": "https://arastirma.tarimorman.gov.tr/ttae/Sayfalar/Detay.aspx?SayfaId=61" },
       { "title": "Cayci et al. (2009), Central Anatolia rotation field trial", "url": "https://doi.org/10.1016/j.still.2008.09.004" },
-      { "title": "Tarı and Bahçeci (2022), Konya chickpea sowing and irrigation field trial, table 8", "url": "https://dergipark.org.tr/en/download/article-file/3056004" },
+      { "title": "Tarı and Bahçeci (2022), Konya chickpea sowing and irrigation field trial, tables 4 and 8 and figure 5", "url": "https://dergipark.org.tr/en/download/article-file/3056004" },
       { "title": "FAO EcoCrop data sheet for Cicer arietinum", "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=2479" },
       { "title": "FAO Irrigation and Drainage Paper 56, rooting depths, table 22", "url": "https://www.fao.org/4/x0490e/x0490e0e.htm" }
     ]
@@ -113,6 +116,7 @@
     "waterRequirementMm": { "min": 250, "max": 360 },
     "soilPh": { "min": 5.5, "max": 7.5 },
     "irrigationSensitivity": "low",
+    "yieldResponseKy": { "value": 1.15, "basis": "analog", "source": "FAO Irrigation and Drainage Paper 56, table 24. Lentil is not listed, so the pea value is used as the closest pulse." },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 0.6–0.8 m in suitable soils.",
     "dataConfidence": "low",
     "limitations": [
@@ -145,6 +149,7 @@
     "waterRequirementMm": { "min": 580, "max": 650 },
     "soilPh": { "min": 6, "max": 7.5 },
     "irrigationSensitivity": "medium",
+    "yieldResponseKy": { "value": 1.02, "basis": "regional_trial", "source": "Gündüz et al. (2018), two-year mean in Konya. FAO-56 table 24 lists 0.95." },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 0.8–1.5 m in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [
@@ -154,7 +159,7 @@
     "references": [
       { "title": "Konya planting-date simulation, Optimizing agricultural production for economic sustainability of sunflower across climatic zones", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12909816/" },
       { "title": "Trakya Agricultural Research Institute, Sunflower Cultural Practices in Turkey", "url": "https://arastirma.tarimorman.gov.tr/ttae/Sayfalar/EN/Detay.aspx?SayfaId=142" },
-      { "title": "Gündüz et al., Konya field trial on sunflower water stress and seasonal water consumption", "url": "https://dergipark.org.tr/tr/download/article-file/595097" },
+      { "title": "Gündüz et al. (2018), Konya field trial on sunflower water stress, seasonal water consumption and yield response", "url": "https://dergipark.org.tr/tr/download/article-file/595097" },
       { "title": "FAO EcoCrop data sheet for Helianthus annuus", "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1191" },
       { "title": "FAO Irrigation and Drainage Paper 56, rooting depths and water stress, tables 22 and 24", "url": "https://www.fao.org/4/x0490e/x0490e0e.htm" }
     ]
@@ -177,6 +182,7 @@
     "waterRequirementMm": { "min": 500, "max": 800 },
     "soilPh": { "min": 6, "max": 7.5 },
     "irrigationSensitivity": "high",
+    "yieldResponseKy": { "value": 1.25, "basis": "reference", "source": "FAO Irrigation and Drainage Paper 56, table 24, maize" },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 1.0–1.7 m for grain maize in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [

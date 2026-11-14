@@ -1,0 +1,109 @@
+.feedback {
+  margin-top: 1rem;
+  scroll-margin-top: 5.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.feedback > summary {
+  width: fit-content;
+  color: var(--green);
+  font-weight: 700;
+}
+
+.instructions {
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.baseline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1.5rem;
+  margin: 0.8rem 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  background: var(--green-soft);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.baseline > div {
+  min-width: 0;
+}
+
+.baseline dt {
+  color: var(--muted);
+}
+
+.baseline dd {
+  font-weight: 650;
+}
+
+.form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  align-items: end;
+  gap: 0.65rem 0.8rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.optional {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.field select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #c4d2c6;
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.sequence {
+  color: var(--green);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+}
+
+.actions button {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 0.5rem;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.status {
+  color: var(--muted);
+  font-size: 0.85rem;
+}

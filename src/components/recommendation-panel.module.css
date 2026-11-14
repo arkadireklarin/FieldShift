@@ -58,6 +58,8 @@
 }
 
 .empty a,
+.quota a,
+.evidence a,
 .modelNotes a {
   color: var(--green, #315d42);
   text-decoration: underline;
@@ -73,6 +75,209 @@
 
 .rotationGrid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.comparison {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.comparison h3 {
+  color: var(--ink, #1c3024);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.comparison > p {
+  color: var(--muted, #526357);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.quota,
+.region {
+  margin-bottom: 1rem;
+  border: 1px solid #b7cbbb;
+  border-radius: 0.8rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--green-soft);
+  color: var(--muted);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.quota {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.quota[data-unmet],
+.region[data-outside] {
+  border-color: #ded3bb;
+  background: #f8f2e7;
+}
+
+.quota h3,
+.quota strong {
+  color: var(--ink);
+}
+
+.quota h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.benchmarkChecks {
+  display: grid;
+  gap: 0.2rem;
+  color: #73492a;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.evidence {
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.evidence > summary {
+  width: fit-content;
+  color: var(--green);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.evidence > p,
+.evidenceGroup {
+  margin-top: 0.65rem;
+}
+
+.evidenceGroup h3,
+.evidenceGroup strong,
+.evidenceLabel {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.evidenceLabel {
+  margin-inline-end: 0.25rem;
+}
+
+.evidenceGroup ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.evidenceGroup li {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  overflow-wrap: anywhere;
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.65rem;
+}
+
+.comparisonCard {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.65rem;
+  min-width: 0;
+  border: 1px solid var(--line, #dbe1d9);
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+  background: var(--surface, #fff);
+}
+
+.comparisonCard:first-child {
+  border-color: #aabfad;
+  background: var(--green-soft, #eaf2e8);
+}
+
+.comparisonCard:only-child {
+  max-width: 22rem;
+}
+
+.comparisonCardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.comparisonCardTitle a {
+  color: var(--green, #315d42);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.timeline {
+  display: grid;
+  align-content: start;
+  gap: 0.4rem;
+  border-inline-start: 2px solid #aabfad;
+  padding-inline-start: 0.6rem;
+}
+
+.timeline strong,
+.timeline span {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.timeline span {
+  color: var(--muted, #526357);
+}
+
+.timeline time {
+  white-space: nowrap;
+}
+
+.calendarMetrics {
+  display: grid;
+  gap: 0.25rem;
+  border-top: 1px solid #cddacf;
+  padding-top: 0.55rem;
+  color: var(--muted, #526357);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.calendarMetrics > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.calendarMetrics dd {
+  color: var(--ink, #1c3024);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cropWater {
+  margin: 0.75rem 0;
+}
+
+.cropWater dd,
+.calendarMetrics time {
+  white-space: nowrap;
+}
+
+.rotationCard {
+  scroll-margin-top: 5.5rem;
 }
 
 .card {
@@ -291,4 +496,15 @@
 .provenance {
   display: grid;
   gap: 0.4rem;
+}
+
+.rankedSection {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.rankedSection > h3 {
+  font-size: 1rem;
+  font-weight: 700;
 }

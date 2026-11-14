@@ -27,12 +27,16 @@ Stop the development server before starting the production server on the same po
 ## Demo checklist
 
 1. Open the dashboard and click **Select map center** to select the default field near Çumra, Konya (37.5667° N, 32.7750° E).
-2. Select **Wheat**, choose **No** for irrigation, leave measured soil pH blank, and click **Analyze field**. The loading state should give way to climate history, six crop suitability cards, and three ranked plans with three cycles and explanations each.
+2. Select **Wheat**, choose **No** for irrigation, and leave measured soil pH blank. Turn on **Compare with my current rotation** and enter **Wheat**, **Fallow**, **Wheat** as an example. Click **Analyze field**. In **Rotation plans**, compare the current plan with the three alternatives by calendar, months without a primary crop, and crop and family counts.
 3. In **Climate history**, open **View monthly values and daily coverage**. Check the NASA POWER source link, the 2021–2025 period, monthly mean air temperature in °C, monthly precipitation totals in mm, and the day counts. Check the rotation notes for the missing-pH explanation.
 4. Within five minutes, click **Analyze field** again with the same inputs. The results should stay the same and the browser Network panel should show no new analysis request. Switch irrigation to **Yes** and analyze, then switch the previous crop to **Chickpea** and analyze. Compare the score factors and transition explanations. Each changed analysis sends one `POST /api/recommend`.
 5. Repeat the flow in a narrow mobile viewport. Check that the field inputs, charts, monthly table, and plan cards are usable without horizontal page scrolling.
 6. For the invalid-input check, request `/api/climate?lat=&lon=32.775` or `/api/climate?lat=91&lon=32.775`. Both should return `400 INVALID_INPUT`. The map limits point selection to valid coordinates.
 7. For an outage check, run `npm test -- src/app/api/routes.test.ts -t "typed climate errors"` to simulate upstream failures. The expected cold-cache response is `503 CLIMATE_UNAVAILABLE`. In the dashboard, the error clears the loading state and allows retry. During an upstream outage the dashboard can display historical values from a genuine cached response for the selected point and period.
+
+To demonstrate different decisions from the same climate data, use the Çumra point with **Chickpea** as the previous crop, **Yes** for irrigation, and no measured pH. In **Rotation plans**, compare the first harvest, crop families, and model score across the three priorities. The same sequence can lead on more than one priority, and the planting dates advance with the planning month.
+
+For the same Çumra example with a December 2026 planning start, set **July 2027** as the latest first harvest. Set the seasonal irrigation quota to **340 m³/da**, then try **310** and **300**. Compare which sequences survive the quota in both climate runs. Expand **Published field evidence** to see the reported trial outcomes and model checks. The [Turkish jury demo](docs/jury-demo.md) records the reference run and its limits.
 
 ## Deploy to Vercel
 
@@ -43,7 +47,16 @@ Stop the development server before starting the production server on the same po
 ## Model and data limits
 
 - The climate charts describe historical NASA POWER grid-cell estimates. A drawn boundary records the shape of the field. The selected point determines the climate query.
-- The model uses six provisional Central Anatolia crop profiles. Scores compare relative fit and use irrigation availability as a binary input. Three plans require at least three distinct crops that meet the seasonal criteria. Plan timing advances with the Istanbul calendar month.
+- The model uses six provisional Central Anatolia crop profiles inside an approximate pilot boundary. Points outside the pilot still receive NASA POWER climate history. Rotation plans require at least three distinct crops with sufficient active-season temperature and water data. A provisional rainfed yield-share screen excludes severe modeled water deficits from rainfed plans.
+- A seasonal irrigation quota in m³/da applies to net water delivered to the root zone in each crop cycle. The model checks the largest estimated season in each of the available climate runs. The water balance compares the crop profile’s full seasonal demand with in-season rainfall and estimated carryover storage. It uses a simplified rainfall proxy and excludes delivery losses. [FAO irrigation water needs](https://www.fao.org/4/s2022e/s2022e08.htm)
+- The calendar-only benchmark uses the same crop catalog and start month. It selects the fastest first harvest and then fastest finish before checking climate and water. The comparison evaluates calendar, model score and modeled irrigation separately.
+- The three decision priorities search all modeled candidate sequences. The highest-score plan uses the weighted suitability, transition, and diversity model. The early-harvest plan prioritizes the first harvest month. The diversity plan maximizes the number of botanical crop families. These reflect the assumed calendars and crop profiles.
+- The dry-year replay repeats monthly temperatures and rainfall from the lowest-rainfall complete calendar year when its total falls below the median of the complete years. The lower of the historical and replay scores is each sequence’s floor. The model highlights the sequence with the highest floor among candidates eligible in both runs. The replay measures model sensitivity to one past pattern. It does not establish future weather, expected yield, or water savings.
+- The optional comparison projects the grower's next three planned cycles using the same start month and regional calendar as the recommendations. Each plan ends after its third cycle, so durations can differ. A fallow cycle occupies 12 months from the first available month. Months without a primary crop also include gaps between crop cycles and can have ground cover. The comparison describes the projected schedule and crop diversity.
 - The server cache is process-local. Cold starts and different instances can require a fresh NASA POWER retrieval. If NASA POWER fails and no matching history is cached, analysis is unavailable until a retry succeeds.
 
 See the [architecture and API contract](docs/architecture.md) and the [two-day task breakdown](docs/task-breakdown.md).
+
+The [Turkish validity evidence](docs/validity-evidence.md) covers the water constraint, the comparison with published field trials, the grower budget under **Costs and returns**, and operating costs.
+
+For a facilitated decision pilot, enable **Record a pilot session** inside the current-rotation form. Enter a study code and intention before analysis, then record the choice and download the CSV under **Pilot decision feedback**. The [Turkish pilot guide](docs/impact-pilot.md) defines decision and field outcomes.
