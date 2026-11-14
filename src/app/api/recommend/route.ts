@@ -3,7 +3,7 @@ import { assessCropSuitability } from "../../../lib/crops/suitability";
 import { getClimate } from "../../../lib/nasa";
 import { describeApplicability, findServiceRegion } from "../../../lib/regions";
 import { describeSpatialContext } from "../../../lib/regions/parcel";
-import { analyzeRotations, compareRotationCalendars } from "../../../lib/rotation";
+import { analyzeRotations, compareRotationCalendars, findRotationSingleChange } from "../../../lib/rotation";
 import { buildSoilAssessment, buildSoilHealthComparison } from "../../../lib/rotation/soil-sensitivity";
 import { getModelEvidence } from "../../../lib/validation/evidence";
 import type { RecommendResponse } from "../../../types/api";
@@ -58,6 +58,9 @@ export async function POST(request: Request): Promise<Response> {
     const rotationComparison = field.currentRotation === undefined
       ? undefined
       : compareRotationCalendars(field.currentRotation, rotations, firstAvailableMonth);
+    const singleChange = field.currentRotation === undefined
+      ? undefined
+      : findRotationSingleChange(field.currentRotation, climate, field, firstAvailableMonth);
     const soilAssessment = buildSoilAssessment(climate, field, firstAvailableMonth, suitability, analysis);
     const soilHealth = buildSoilHealthComparison(field.previousCrop, rotationComparison, rotations, strategies);
     const calendarScope = `Crop profiles use provisional main-season calendars for ${region.name}. Confirm local cultivar and planting dates before applying these rankings.`;
@@ -83,6 +86,7 @@ export async function POST(request: Request): Promise<Response> {
       suitability,
       rotations,
       rotationComparison,
+      singleChange,
       rotationStrategies: strategies,
       harvestDeadline,
       irrigationQuota,

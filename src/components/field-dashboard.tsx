@@ -11,6 +11,9 @@ import DecisionFeedback from "./decision-feedback";
 import { initialIntentLabels, isParticipantCode, participantCodePattern, type InitialIntent } from "./decision-feedback-export";
 import { requestRecommendation, type RequestState } from "./field-api";
 import PlanBudgetPanel from "./plan-budget-panel";
+import FarmerView from "./farmer-view";
+import { buildFarmerSummary, cycleName, languageNames, type Language } from "./farmer-summary";
+import { uiText } from "./ui-text";
 import { MAX_ROOTING_DEPTH_CM, MIN_ROOTING_DEPTH_CM, SOIL_TEXTURE_WATER_MM_PER_M } from "@/lib/crops/water-balance";
 import { describeApplicability, findServiceRegion } from "@/lib/regions";
 import { describeSpatialContext } from "@/lib/regions/parcel";
@@ -31,10 +34,10 @@ const planningMonth = new Intl.DateTimeFormat("en", {
   month: "numeric",
 });
 const navigation = [
-  { key: "field", label: "Field setup" },
-  { key: "climate", label: "Climate history" },
-  { key: "suitability", label: "Crop suitability", icon: "crop" },
-  { key: "rotation", label: "Rotation plans" },
+  { key: "field" },
+  { key: "climate" },
+  { key: "suitability", icon: "crop" },
+  { key: "rotation" },
 ] as const;
 
 function formatCoordinate(value: number, positive: string, negative: string) {
@@ -55,6 +58,7 @@ export default function FieldDashboard() {
   const [participantCode, setParticipantCode] = useState("");
   const [initialIntent, setInitialIntent] = useState<InitialIntent | "">("");
   const [pilotSession, setPilotSession] = useState<{ participantCode: string; initialIntent: InitialIntent }>();
+  const [language, setLanguage] = useState<Language>("tr");
   const [analysis, setAnalysis] = useState<RequestState<RecommendResponse>>({ status: "idle" });
   const [fixture, setFixture] = useState<DevelopmentFixture>();
   const [fixtureError, setFixtureError] = useState(false);
@@ -62,6 +66,10 @@ export default function FieldDashboard() {
   const lastAnalysis = useRef<{ key: string; expiresAt: number; data: RecommendResponse } | null>(null);
 
   useEffect(() => () => activeRequest.current?.abort(), []);
+  // The page is served in one language; the chosen one has to reach assistive technology too.
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   function resetAnalysis() {
     activeRequest.current?.abort();
@@ -87,11 +95,9 @@ export default function FieldDashboard() {
     if (irrigation === "available" && typeof irrigationQuota === "string" && irrigationQuota !== "") {
       field.irrigationQuotaM3PerDa = Number(irrigationQuota);
     }
-    if (compareCurrent) {
-      const [first, second, third] = currentCycles;
-      if (!first || !second || !third) return;
-      field.currentRotation = [first, second, third];
-    }
+    const [first, second, third] = currentCycles;
+    // A partly filled plan is not sent, but it never blocks the analysis either.
+    if (compareCurrent && first && second && third) field.currentRotation = [first, second, third];
     if (compareCurrent && pilotEnabled) {
       if (!initialIntent || !isParticipantCode(participantCode)) return;
       setPilotSession({ participantCode, initialIntent });
@@ -140,6 +146,8 @@ export default function FieldDashboard() {
   const result = analysis.status === "success" ? analysis.data : undefined;
   const error = analysis.status === "error" ? analysis.error : undefined;
   const selectedCoordinates = `${formatCoordinate(location.lat, "N", "S")} · ${formatCoordinate(location.lon, "E", "W")}`;
+  const t = uiText[language];
+  const farmerSummary = result && !fixture ? buildFarmerSummary(result, language, previousCrop || undefined) : undefined;
   const outsidePilotArea = findServiceRegion(location) ? undefined : describeApplicability(undefined).message;
   const spatialPreview = describeSpatialContext(location, polygon);
 
@@ -158,7 +166,7 @@ export default function FieldDashboard() {
           {navigation.map((item) => (
             <a key={item.key} href={`#${item.key}`}>
               <DashboardIcon name={"icon" in item ? item.icon : item.key} size={18} />
-              <span>{item.label}</span>
+              <span>{t.nav[item.key]}</span>
             </a>
           ))}
         </nav>
@@ -170,8 +178,17 @@ export default function FieldDashboard() {
 
       <main className={styles.main} id="main" tabIndex={-1}>
         <header className={styles.pageHeader}>
-          <h1>Field intelligence</h1>
-          <p>Explore historical climate and plan the next three crop cycles for your field.</p>
+          <div>
+            <h1>{t.title}</h1>
+            <p>{t.subtitle}</p>
+          </div>
+          <div className={styles.languages} role="group" aria-label={t.language}>
+            {(Object.keys(languageNames) as Language[]).map((code) => (
+              <button key={code} type="button" aria-pressed={language === code} onClick={() => setLanguage(code)}>
+                {languageNames[code]}
+              </button>
+            ))}
+          </div>
         </header>
 
         <section id="field" aria-label="Field setup" className={styles.setup}>
@@ -180,8 +197,8 @@ export default function FieldDashboard() {
               <div className={styles.cardTitle}>
                 <span className={styles.cardIcon}><DashboardIcon name="pin" size={20} /></span>
                 <div>
-                  <h2>Field location</h2>
-                  <p>Select a point to query the surrounding climate grid cell.</p>
+                  <h2>{t.locationTitle}</h2>
+                  <p>{t.locationLead}</p>
                 </div>
               </div>
               <span className={styles.locationPill}><DashboardIcon name="pin" size={15} /> {selectedCoordinates}</span>
@@ -198,7 +215,8 @@ export default function FieldDashboard() {
                 setPolygon(ring);
               }}
             />
-            <div className={styles.spatialBox} aria-label="Parcel and NASA POWER grid cell role">
+            <details className={styles.spatialBox} aria-label="Parcel and NASA POWER grid cell role">
+              <summary>{t.gridDetails}</summary>
               <div className={styles.spatialRow}>
                 <strong>NASA POWER grid cell (0.5° × 0.625°):</strong>{" "}
                 <span>
@@ -233,7 +251,7 @@ export default function FieldDashboard() {
                   <strong>Role in analysis:</strong> The pin queries regional NASA POWER climate for this 0.5° × 0.625° grid cell. Draw a field boundary above to calculate parcel area (decares) for whole-field water and gross margin totals, and enter local soil properties on the right to tailor root-zone water storage.
                 </p>
               )}
-            </div>
+            </details>
             {outsidePilotArea && <p className={styles.pilotArea} role="status">{outsidePilotArea}</p>}
           </article>
 
@@ -242,26 +260,28 @@ export default function FieldDashboard() {
               <div className={styles.cardTitle}>
                 <span className={styles.cardIcon}><DashboardIcon name="crop" size={20} /></span>
                 <div>
-                  <h2>Field conditions</h2>
-                  <p>Tell us about your last crop and water access.</p>
+                  <h2>{t.conditionsTitle}</h2>
+                  <p>{t.conditionsLead}</p>
                 </div>
               </div>
             </div>
             <form onSubmit={analyze} className={styles.form}>
               <label className={styles.fieldLabel}>
-                Previous crop
+                {t.previousCrop}
                 <select required name="previousCrop" value={previousCrop} onChange={(event) => {
                   resetAnalysis();
                   setPreviousCrop(event.target.value as CropId | "");
                 }}>
-                  <option value="" disabled>Select previous crop</option>
-                  {Object.entries(cropLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                  <option value="" disabled>{t.selectCrop}</option>
+                  {Object.keys(cropLabels).map((id) => (
+                    <option key={id} value={id}>{cycleName(id as CropId, language)}</option>
+                  ))}
                 </select>
               </label>
               <fieldset className={styles.irrigation}>
-                <legend>Irrigation available</legend>
+                <legend>{t.irrigation}</legend>
                 <div className={styles.options}>
-                  {([["available", "Yes"], ["unavailable", "No"]] as const).map(([value, label]) => (
+                  {([["available", t.yes], ["unavailable", t.no]] as const).map(([value, label]) => (
                     <label className={styles.choice} key={value}>
                       <input type="radio" name="irrigation" value={value} checked={irrigation === value} required
                         onChange={() => {
@@ -273,65 +293,69 @@ export default function FieldDashboard() {
                   ))}
                 </div>
               </fieldset>
-              {irrigation === "available" && (
-                <label className={styles.fieldLabel}>
-                  <span className={styles.labelRow}>Seasonal irrigation quota <span>Optional</span></span>
-                  <input type="number" id="irrigation-quota" name="irrigationQuota" min="0" max="10000" step="any"
-                    inputMode="decimal" placeholder="Net m³ per decare" aria-describedby="quota-help" onInput={resetAnalysis} />
-                  <small id="quota-help">Enter the water that can reach the roots in each crop season, after delivery losses. 1 mm over 1 decare equals 1 m³.</small>
-                </label>
-              )}
-              <fieldset className={styles.soilGroup} aria-describedby="soil-group-help">
-                <legend>Local soil properties <span>Optional · from soil report or field knowledge</span></legend>
-                <p id="soil-group-help">
-                  NASA POWER supplies grid-cell weather. Local soil texture and root-zone depth set how much pre-planting winter rain the root zone can store (FAO-56 tables 19 &amp; 22). When left blank, the model uses the 130 mm Konya trial cap and omits pH.
-                </p>
-                <label className={styles.fieldLabel}>
-                  <span className={styles.labelRow}>Soil texture class <span>Optional · mm/m</span></span>
-                  <select name="soilTexture" value={soilTexture} aria-describedby="soil-texture-help" onChange={(event) => {
-                    resetAnalysis();
-                    setSoilTexture(event.target.value as SoilTexture | "");
-                  }}>
-                    <option value="">Unmeasured (default 130 mm/m Konya trial cap)</option>
-                    {(Object.entries(SOIL_TEXTURE_WATER_MM_PER_M) as [SoilTexture, (typeof SOIL_TEXTURE_WATER_MM_PER_M)[SoilTexture]][]).map(
-                      ([id, info]) => (
-                        <option key={id} value={id}>
-                          {info.label} — {info.mmPerM} mm/m (FAO-56 {info.faoRangeMmPerM})
-                        </option>
-                      ),
-                    )}
-                  </select>
-                  <small id="soil-texture-help">Extractable preseason water capacity per meter of root zone (FAO-56 table 19).</small>
-                </label>
-                <label className={styles.fieldLabel}>
-                  <span className={styles.labelRow}>Effective root-zone depth <span>Optional · cm</span></span>
-                  <input type="number" name="rootingDepthCm" min={MIN_ROOTING_DEPTH_CM} max={MAX_ROOTING_DEPTH_CM} step="1"
-                    inputMode="numeric" aria-describedby="root-depth-help" placeholder="e.g. 50 (shallow caliche) or 120"
-                    value={rootingDepthCm} onChange={(event) => {
+              <details className={styles.optional}>
+                <summary>{t.optionalDetails}</summary>
+                <p className={styles.optionalLead}>{t.optionalLead}</p>
+                {irrigation === "available" && (
+                  <label className={styles.fieldLabel}>
+                    <span className={styles.labelRow}>Seasonal irrigation quota <span>Optional</span></span>
+                    <input type="number" id="irrigation-quota" name="irrigationQuota" min="0" max="10000" step="any"
+                      inputMode="decimal" placeholder="Net m³ per decare" aria-describedby="quota-help" onInput={resetAnalysis} />
+                    <small id="quota-help">Enter the water that can reach the roots in each crop season, after delivery losses. 1 mm over 1 decare equals 1 m³.</small>
+                  </label>
+                )}
+                <fieldset className={styles.soilGroup} aria-describedby="soil-group-help">
+                  <legend>Local soil properties <span>Optional · from soil report or field knowledge</span></legend>
+                  <p id="soil-group-help">
+                    NASA POWER supplies grid-cell weather. Local soil texture and root-zone depth set how much pre-planting winter rain the root zone can store (FAO-56 tables 19 &amp; 22). When left blank, the model uses the 130 mm Konya trial cap and omits pH.
+                  </p>
+                  <label className={styles.fieldLabel}>
+                    <span className={styles.labelRow}>Soil texture class <span>Optional · mm/m</span></span>
+                    <select name="soilTexture" value={soilTexture} aria-describedby="soil-texture-help" onChange={(event) => {
                       resetAnalysis();
-                      setRootingDepthCm(event.target.value);
-                    }} />
-                  <small id="root-depth-help">
-                    Unrestricted soil depth above hardpan, gravel or water table ({MIN_ROOTING_DEPTH_CM}–{MAX_ROOTING_DEPTH_CM} cm), bounded by each crop’s FAO-56 table 22 max root depth.
-                  </small>
-                </label>
+                      setSoilTexture(event.target.value as SoilTexture | "");
+                    }}>
+                      <option value="">Unmeasured (default 130 mm/m Konya trial cap)</option>
+                      {(Object.entries(SOIL_TEXTURE_WATER_MM_PER_M) as [SoilTexture, (typeof SOIL_TEXTURE_WATER_MM_PER_M)[SoilTexture]][]).map(
+                        ([id, info]) => (
+                          <option key={id} value={id}>
+                            {info.label} — {info.mmPerM} mm/m (FAO-56 {info.faoRangeMmPerM})
+                          </option>
+                        ),
+                      )}
+                    </select>
+                    <small id="soil-texture-help">Extractable preseason water capacity per meter of root zone (FAO-56 table 19).</small>
+                  </label>
+                  <label className={styles.fieldLabel}>
+                    <span className={styles.labelRow}>Effective root-zone depth <span>Optional · cm</span></span>
+                    <input type="number" name="rootingDepthCm" min={MIN_ROOTING_DEPTH_CM} max={MAX_ROOTING_DEPTH_CM} step="1"
+                      inputMode="numeric" aria-describedby="root-depth-help" placeholder="e.g. 50 (shallow caliche) or 120"
+                      value={rootingDepthCm} onChange={(event) => {
+                        resetAnalysis();
+                        setRootingDepthCm(event.target.value);
+                      }} />
+                    <small id="root-depth-help">
+                      Unrestricted soil depth above hardpan, gravel or water table ({MIN_ROOTING_DEPTH_CM}–{MAX_ROOTING_DEPTH_CM} cm), bounded by each crop’s FAO-56 table 22 max root depth.
+                    </small>
+                  </label>
+                  <label className={styles.fieldLabel}>
+                    <span className={styles.labelRow}>Measured soil pH <span>Optional · pH (H₂O)</span></span>
+                    <input type="number" name="soilPh" min="0" max="14" step="any" inputMode="decimal"
+                      aria-describedby="ph-help" placeholder="e.g. 7.2 or 8.2" value={soilPh} onChange={(event) => {
+                        resetAnalysis();
+                        setSoilPh(event.target.value);
+                      }} />
+                    <small id="ph-help">Compared with FAO EcoCrop pH bands (10% suitability weight). Omitted when blank.</small>
+                  </label>
+                </fieldset>
                 <label className={styles.fieldLabel}>
-                  <span className={styles.labelRow}>Measured soil pH <span>Optional · pH (H₂O)</span></span>
-                  <input type="number" name="soilPh" min="0" max="14" step="any" inputMode="decimal"
-                    aria-describedby="ph-help" placeholder="e.g. 7.2 or 8.2" value={soilPh} onChange={(event) => {
-                      resetAnalysis();
-                      setSoilPh(event.target.value);
-                    }} />
-                  <small id="ph-help">Compared with FAO EcoCrop pH bands (10% suitability weight). Omitted when blank.</small>
+                  <span className={styles.labelRow}>Latest acceptable first harvest <span>Optional</span></span>
+                  <input type="month" id="latest-first-harvest" name="latestFirstHarvest" min="1900-01" max="2199-12"
+                    pattern="(?:19|20|21)[0-9]{2}-(?:0[1-9]|1[0-2])" placeholder="YYYY-MM"
+                    aria-describedby="harvest-deadline-help" onInput={resetAnalysis} />
+                  <small id="harvest-deadline-help">Plans with a first harvest after this month are excluded.</small>
                 </label>
-              </fieldset>
-              <label className={styles.fieldLabel}>
-                <span className={styles.labelRow}>Latest acceptable first harvest <span>Optional</span></span>
-                <input type="month" id="latest-first-harvest" name="latestFirstHarvest" min="1900-01" max="2199-12"
-                  pattern="(?:19|20|21)[0-9]{2}-(?:0[1-9]|1[0-2])" placeholder="YYYY-MM"
-                  aria-describedby="harvest-deadline-help" onInput={resetAnalysis} />
-                <small id="harvest-deadline-help">Plans with a first harvest after this month are excluded.</small>
-              </label>
+              </details>
               <div className={styles.comparisonInput}>
                 <label className={styles.comparisonToggle}>
                   <input type="checkbox" checked={compareCurrent} onChange={(event) => {
@@ -339,23 +363,25 @@ export default function FieldDashboard() {
                     setCompareCurrent(event.target.checked);
                     if (!event.target.checked) setPilotEnabled(false);
                   }} />
-                  Compare with my current rotation
+                  {t.currentRotation}
                 </label>
                 {compareCurrent && (
                   <fieldset className={styles.currentRotation} aria-describedby="current-rotation-help">
-                    <legend>Next three cycles in your current plan</legend>
-                    <p id="current-rotation-help">Enter what you would normally plant next. You can repeat crops or choose a 12-month fallow cycle.</p>
+                    <legend>{t.currentRotation}</legend>
+                    <p id="current-rotation-help">{t.currentRotationHelp}</p>
                     {currentCycles.map((cycle, index) => (
                       <label className={styles.fieldLabel} key={index}>
-                        Current cycle {index + 1}
-                        <select required value={cycle} onChange={(event) => {
+                        {t.cycle(index + 1)}
+                        <select value={cycle} onChange={(event) => {
                           resetAnalysis();
                           const updated: typeof currentCycles = [...currentCycles];
                           updated[index] = event.target.value as RotationCycle | "";
                           setCurrentCycles(updated);
                         }}>
-                          <option value="" disabled>Select crop or fallow</option>
-                          {Object.entries(rotationCycleLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                          <option value="">{t.selectCycle}</option>
+                          {Object.keys(rotationCycleLabels).map((id) => (
+                            <option key={id} value={id}>{cycleName(id as RotationCycle, language)}</option>
+                          ))}
                         </select>
                       </label>
                     ))}
@@ -396,15 +422,13 @@ export default function FieldDashboard() {
                 )}
               </div>
               <button className={styles.analyzeButton} disabled={loading} type="submit">
-                {loading ? "Analyzing field…" : "Analyze field"} <DashboardIcon name="arrow" size={18} />
+                {loading ? t.analyzing : t.analyze} <DashboardIcon name="arrow" size={18} />
               </button>
               {analysis.status !== "idle" && (
                 <p className={styles.formStatus} role="status">
-                  {loading ? "Requesting climate history and crop analysis…" : (
-                    <>{error ? "Analysis unavailable." : "Analysis complete."}{" "}
-                    {result?.rotationComparison || result?.harvestDeadline || result?.irrigationQuota
-                      ? <a href="#rotation">Compare rotations</a>
-                      : <a href="#climate">Review details</a>}.</>
+                  {loading ? t.loading : (
+                    <>{error ? t.failed : ""}{" "}
+                    <a href={farmerSummary ? "#recommendation" : "#climate"}>{t.seeResult}</a>.</>
                   )}
                 </p>
               )}
@@ -428,6 +452,15 @@ export default function FieldDashboard() {
         )}
 
         <div className={styles.results}>
+          {farmerSummary && (
+            <FarmerView summary={farmerSummary} language={language} currentSequence={result?.rotationComparison?.current.schedule.map(({ crop }) => crop)} />
+          )}
+          {result?.applicability?.status === "outside_validated_region" && (
+            <p className={styles.pilotArea} role="status">{t.outsideRegion}</p>
+          )}
+          <details className={styles.expert} open={!farmerSummary}>
+            <summary>{t.expertDetails}</summary>
+            <p className={styles.expertLead}>{t.expertLead}</p>
           <ClimatePanel
             climate={result?.climate}
             error={error}
@@ -444,6 +477,7 @@ export default function FieldDashboard() {
           {result && !fixture && (
             <PlanBudgetPanel result={result} irrigated={irrigation === "available"} />
           )}
+          </details>
           {result?.rotationComparison && pilotSession && (
             <DecisionFeedback
               comparison={result.rotationComparison}

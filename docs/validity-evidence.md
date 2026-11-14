@@ -75,6 +75,19 @@ Brüt marj, üç döngünün gelirinden üretim ve sulama maliyetinin çıkarıl
 - **Bakım.** Yılda bir kez iklim penceresi güncellenir, kanıt testleri çalıştırılır ve ürün profilleri bir ziraat mühendisiyle gözden geçirilir.
 - **Pilot.** [Etki pilotu](impact-pilot.md) 5–10 üreticiyle 15 dakikalık oturumlar öngörür. Saha ölçümlerinin bütçesi henüz çıkarılmadı.
 
+## Tek Değişiklik sıralaması
+
+Çiftçi kendi üç ekimini girdiğinde model, her ekimi tek tek diğer ürünlerle ve nadasla değiştirir (18 aday) ve sonuçları şu sırayla sıralar:
+
+1. Bu tarlada yetişmeyecek ürün taşıyan ekim sayısı
+2. Önceki ürünü ya da ailesini tekrarlayan geçiş sayısı
+3. Tek bir sezonda gereken en yüksek sulama
+4. Ana ürünsüz ay sayısı
+
+Her adım bir sonrakinden önce karara bağlanır. Üçüncü adım yalnızca sulu tarlada tartılır; sulamasız tarlada su uygulanmadığı için bir değişiklik su üzerinden ne ödüllendirilir ne cezalandırılır. Sıra, ölçütlerin arkasındaki kanıtın gücünü izler: su dengesinin reddettiği ürün zaten yetişmez; ürün ya da aile tekrarı İç Anadolu rotasyon denemesinin ölçtüğü etkidir; son iki ölçüt modelin kendi su dengesinden ve takviminden gelir.
+
+Kazanım yalnızca bu dört ölçüyle ifade edilir. Verim ya da gelir artışı ima edilmez.
+
 ## Açık kalanlar
 
 - Sıralanan planlar üretici tarlasında henüz denenmedi. Verim, su ve marj ölçümü pilotla yapılacak.

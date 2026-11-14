@@ -204,6 +204,51 @@ export interface RotationStressTest {
   robustPlan?: { plan: RotationRecommendation; calendar: RotationCalendar };
 }
 
+/** One cycle of the grower's own rotation replaced with a different crop or fallow. */
+export interface RotationChange {
+  /** Replaced cycle, 1-based. */
+  cycle: number;
+  from: RotationCycle;
+  to: RotationCycle;
+  sequence: RotationSequence;
+  calendar: RotationCalendar;
+  measures: RotationSequenceMeasures;
+  /** What this change improves, against the grower's own rotation. */
+  gains: string[];
+  /** What it costs in the same measures, and what the model cannot tell. */
+  tradeoffs: string[];
+}
+
+/** What the model can measure for any three-cycle sequence, the grower's own included. */
+export interface RotationSequenceMeasures {
+  /** Cycles holding a crop the model will not grow on this field. */
+  infeasibleCycles: number;
+  /** Planted transitions that repeat the preceding crop or its botanical family. */
+  repeatedTransitions: number;
+  /** Largest modeled net irrigation of any cycle, in m³ per decare. Absent when a cycle lacks an estimate. */
+  peakSeasonIrrigationM3PerDa?: number;
+  uncroppedMonths: number;
+  totalMonths: number;
+}
+
+export interface SingleChangeResult {
+  current: {
+    sequence: RotationSequence;
+    calendar: RotationCalendar;
+    measures: RotationSequenceMeasures;
+  };
+  /** The highest-ranked single-cycle change. Absent when none improves on the current rotation. */
+  best?: RotationChange;
+  /** Further changes that also improve on it, highest first. */
+  alternatives: RotationChange[];
+  /** Single-cycle changes examined. */
+  consideredCount: number;
+  /** The order the changes were ranked in, and what it is based on. */
+  method: string;
+  /** Present when no change improved on the current rotation. */
+  note?: string;
+}
+
 export interface RegionApplicability {
   status: "validated_region" | "outside_validated_region";
   region?: { id: string; name: string };
@@ -369,6 +414,8 @@ export interface RecommendResponse {
   rotations: RotationRecommendation[];
   /** Present when a current rotation was provided. Alternatives follow the order of rotations. */
   rotationComparison?: { current: RotationCalendar; alternatives: RotationCalendar[] };
+  /** Present when a current rotation was provided: the best single change to it. */
+  singleChange?: SingleChangeResult;
   /** Winning sequences for each priority across all eligible rotations. */
   rotationStrategies?: RotationStrategy[];
   /** Present when a latest first-harvest month was provided. */

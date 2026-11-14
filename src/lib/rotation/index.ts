@@ -12,11 +12,13 @@ import type {
   RotationSequence,
   RotationStrategy,
   RotationStressTest,
+  SingleChangeResult,
 } from "../../types/api";
 import { CROP_PROFILES, getCropProfile, type AgronomicCropProfile } from "../crops/profiles";
 import { assessCropSuitability, assessCropTransition, type SuitabilityFactor } from "../crops/suitability";
 import { assessWaterBalance } from "../crops/water-balance";
 import { buildHistoricalStress } from "./historical-stress";
+import { findSingleChange } from "./single-change";
 
 interface CycleSchedule {
   crop: CropId;
@@ -116,6 +118,19 @@ export function compareRotationCalendars(
     current: summarizeCalendar(scheduleSequence(currentRotation, firstMonth), firstMonth),
     alternatives: rotations.map(({ schedule }) => summarizeCalendar(schedule, firstMonth)),
   };
+}
+
+/** Rank the one-cycle changes to a grower's own rotation, using this module's calendar. */
+export function findRotationSingleChange(
+  currentRotation: RotationSequence,
+  climate: ClimateSummary,
+  field: FieldSelection,
+  firstAvailableMonth: { year: number; month: number },
+): SingleChangeResult {
+  const firstMonth = monthIndex(firstAvailableMonth.year, firstAvailableMonth.month);
+  return findSingleChange(currentRotation, climate, field, (sequence) => ({
+    calendar: summarizeCalendar(scheduleSequence(sequence, firstMonth), firstMonth),
+  }));
 }
 
 function compareCropSequences(a: Pick<RotationPlan, "cycles">, b: Pick<RotationPlan, "cycles">): number {

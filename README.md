@@ -44,6 +44,12 @@ For the same Çumra example with a December 2026 planning start, set **July 2027
 2. Use the **Next.js** framework preset, the directory containing `package.json` as the root, and **Node.js 24.x**. Keep the default Next.js build and output settings so Vercel serves the API routes. FieldShift requires zero environment variables or API keys. [Next.js on Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs) · [Vercel Node.js versions](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions)
 3. Deploy and run steps 1–5 on the deployment URL. Check that `POST /api/recommend` returns HTTP 200 for the Konya field before using the deployment for a demo.
 
+## What a grower sees
+
+The workspace opens in Turkish with an **English** switch. The result is one card: the single change to make, the sequence before and after, why the model ranks it first, what to watch, and a line saying the decision stays with the grower and their agronomist. Everything else — climate charts, crop scores, plan rankings, irrigation quota, dry-year replay, field evidence and the budget — sits behind **Hesabı ve kaynakları göster** and stays in English for review.
+
+**Tek Değişiklik (single change).** When a grower enters their own three cycles, the model replaces each cycle, one at a time, with every other crop and with fallow — 18 candidates — and ranks the results by 1) cycles holding a crop it will not grow on this field, 2) planted transitions that repeat the preceding crop or its family, 3) the largest modeled irrigation of any one season, and 4) months without a primary crop. Step 3 is weighed only on an irrigated field, where the grower pays for the water. Each step is decided before the next is read. Nothing about yield or income is implied: the gains are stated in those four measures alone.
+
 ## Model and data limits
 
 - The climate charts describe historical NASA POWER 0.5° × 0.625° grid-cell estimates. The selected point determines which NASA POWER grid cell is queried for daily temperature (`T2M`) and precipitation (`PRECTOTCORR`). A drawn parcel boundary measures field area in decares (`da`) to scale per-decare irrigation quotas (`m³/da`) and gross margins (`TL/da`) to whole-field totals, while optional local soil inputs differentiate fields inside the same climate grid cell.
