@@ -1,8 +1,9 @@
+import ankara from "../../data/validation/ankara-nasa-power-2021-2025.json";
 import snapshot from "../../data/validation/konya-nasa-power-2021-2025.json";
 import type { CropId, EvidenceCheck, ModelEvidence } from "../../types/api";
 import { getCropProfile } from "../crops/profiles";
 import { assessCropTransition } from "../crops/suitability";
-import { assessWaterBalance, MIN_RAINFED_RELATIVE_YIELD, relativeYield } from "../crops/water-balance";
+import { assessWaterBalance, MIN_RAINFED_RELATIVE_YIELD, relativeYield, type SoilWaterCalibration } from "../crops/water-balance";
 
 const CHICKPEA_TRIAL = {
   title: "Tarı and Bahçeci (2022), chickpea sowing time and irrigation trial on the Konya Plain, tables 4, 7 and 8",
@@ -12,6 +13,10 @@ const SUNFLOWER_TRIAL = {
   title: "Gündüz et al. (2018), sunflower irrigation trial in Konya, tables 4 and 5",
   url: "https://dergipark.org.tr/tr/download/article-file/595097",
 };
+const WHEAT_TRIAL = {
+  title: "Ilbeyi et al. (2006), rainfed and irrigated wheat over four seasons in Ankara",
+  url: "https://doi.org/10.1016/j.agwat.2005.08.005",
+};
 const ROTATION_TRIAL = {
   title: "Cayci et al. (2009), rainfed wheat rotations in Central Anatolia after 21 years",
   url: "https://doi.org/10.1016/j.still.2008.09.004",
@@ -20,12 +25,18 @@ const ROTATION_TRIAL = {
 /** Published field outcomes. Yields and water amounts are two-year means from the cited tables. */
 const OBSERVED = {
   chickpea: {
+    // Long-term April to July rain and October to March rain at the trial site, from table 2.
+    seasonRainMm: 113,
+    rainBeforePlantingMm: 192,
     rainfedWaterUseMm: 241,
     rainfedYieldTHa: 0.98,
     irrigatedYieldTHa: 2.03,
     fullIrrigationMm: 333,
   },
   sunflower: {
+    // May to September rain in the two trial years and long-term October to April rain, from table 2.
+    seasonRainMm: 106.5,
+    rainBeforePlantingMm: 232.5,
     controlWaterUseMm: 329,
     controlIrrigationMm: 94,
     fullWaterUseMm: 648,
@@ -34,6 +45,7 @@ const OBSERVED = {
     fullIrrigationMm: 447,
   },
   wheatKgHa: { rotationLow: 1320, rotationHigh: 2243, continuous: 543 },
+  ankaraWheatTHa: { rainfed: 3.2, irrigated: 5.35 },
 };
 
 const WATER_TOLERANCE = 0.2;
@@ -43,10 +55,16 @@ const mm = (value: number) => `${Math.round(value)} mm`;
 const percent = (share: number) => `${Math.round(100 * share)}%`;
 const within = (predicted: number, observed: number) => Math.abs(predicted - observed) <= WATER_TOLERANCE * observed;
 
-function balanceAtReferenceSite(crop: CropId) {
-  const { balance } = assessWaterBalance(getCropProfile(crop), snapshot);
-  if (!balance) throw new Error(`The Konya reference record has no complete water year for ${crop}.`);
+function balanceAtReferenceSite(crop: CropId, calibration?: SoilWaterCalibration, climate: typeof snapshot = snapshot) {
+  const { balance } = assessWaterBalance(getCropProfile(crop), climate, undefined, calibration);
+  if (!balance) throw new Error(`The reference record has no complete water year for ${crop}.`);
   return balance;
+}
+
+/** Soil-water settings implied by one trial alone, from what its unirrigated plots drew from the soil. */
+function soilSettingsFrom(trial: { seasonRainMm: number; rainBeforePlantingMm: number }, rainfedWaterUseMm: number): SoilWaterCalibration {
+  const drawn = rainfedWaterUseMm - trial.seasonRainMm;
+  return { rechargeEfficiency: drawn / trial.rainBeforePlantingMm, maxStoredMm: drawn };
 }
 
 function buildChecks(): EvidenceCheck[] {
@@ -63,6 +81,12 @@ function buildChecks(): EvidenceCheck[] {
     getCropProfile("sunflower").yieldResponseKy.value,
     OBSERVED.sunflower.controlWaterUseMm / OBSERVED.sunflower.fullWaterUseMm,
   );
+  const fromChickpeaOnly = balanceAtReferenceSite("sunflower", soilSettingsFrom(OBSERVED.chickpea, OBSERVED.chickpea.rainfedWaterUseMm));
+  const fromSunflowerOnly = balanceAtReferenceSite("chickpea", soilSettingsFrom(OBSERVED.sunflower, sunflowerRainOnlyUse));
+  const sunflowerUseHeldOut = fromChickpeaOnly.seasonRainfallMm + fromChickpeaOnly.storedSoilWaterMm;
+  const chickpeaUseHeldOut = fromSunflowerOnly.seasonRainfallMm + fromSunflowerOnly.storedSoilWaterMm;
+  const ankaraWheat = balanceAtReferenceSite("wheat", undefined, ankara);
+  const ankaraWheatYield = OBSERVED.ankaraWheatTHa.rainfed / OBSERVED.ankaraWheatTHa.irrigated;
   const intoWheat = (previous: CropId) => assessCropTransition(getCropProfile(previous), getCropProfile("wheat")).score;
   const afterWheat = intoWheat("wheat");
   const afterOthers = (["chickpea", "lentil", "sunflower"] as const).map((crop) => ({ crop, score: intoWheat(crop) }));
@@ -123,6 +147,33 @@ function buildChecks(): EvidenceCheck[] {
       source: SUNFLOWER_TRIAL,
     },
     {
+      id: "sunflower-water-use-held-out",
+      kind: "consistency",
+      claim: "Sunflower water use predicted with soil-water settings taken from the chickpea trial alone",
+      observed: mm(sunflowerRainOnlyUse),
+      predicted: mm(sunflowerUseHeldOut),
+      agrees: within(sunflowerUseHeldOut, sunflowerRainOnlyUse),
+      source: SUNFLOWER_TRIAL,
+    },
+    {
+      id: "chickpea-water-use-held-out",
+      kind: "consistency",
+      claim: "Chickpea water use predicted with soil-water settings taken from the sunflower trial alone",
+      observed: mm(OBSERVED.chickpea.rainfedWaterUseMm),
+      predicted: mm(chickpeaUseHeldOut),
+      agrees: within(chickpeaUseHeldOut, OBSERVED.chickpea.rainfedWaterUseMm),
+      source: CHICKPEA_TRIAL,
+    },
+    {
+      id: "ankara-wheat-rainfed-yield",
+      kind: "consistency",
+      claim: "Rainfed wheat yield in Ankara as a share of the fully irrigated yield",
+      observed: `${percent(ankaraWheatYield)} (${OBSERVED.ankaraWheatTHa.rainfed} against ${OBSERVED.ankaraWheatTHa.irrigated} t/ha)`,
+      predicted: `${percent(ankaraWheat.rainfedRelativeYield)} on the Ankara NASA POWER record`,
+      agrees: Math.abs(ankaraWheat.rainfedRelativeYield - ankaraWheatYield) <= YIELD_TOLERANCE,
+      source: WHEAT_TRIAL,
+    },
+    {
       id: "rainfed-wheat-feasible",
       kind: "consistency",
       claim: "Wheat stays in rainfed plans",
@@ -148,7 +199,7 @@ let cached: ModelEvidence | undefined;
 /** Compare the current model with published field outcomes at the Konya reference site. */
 export function getModelEvidence(): ModelEvidence {
   cached ??= {
-    site: `Konya, NASA POWER ${snapshot.provenance.period.start.slice(0, 4)}–${snapshot.provenance.period.end.slice(0, 4)}. The trials ran in other years, so each comparison is between climate averages.`,
+    site: `Konya and Ankara, NASA POWER ${snapshot.provenance.period.start.slice(0, 4)}–${snapshot.provenance.period.end.slice(0, 4)}. The trials ran in other years, so each comparison is between climate averages.`,
     checks: buildChecks(),
     pending: "No on-farm comparison of the ranked plans with growers' own rotations has been run. Until the pilot measures yield, water and margin, the ranking is a screening aid.",
   };

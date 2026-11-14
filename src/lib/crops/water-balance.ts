@@ -76,6 +76,12 @@ type WaterClimate = Pick<ClimateSummary, "months"> & {
   provenance: Pick<ClimateSummary["provenance"], "period">;
 };
 
+/** Replaces the regional soil-water settings. Used to test how well one trial's settings predict another. */
+export interface SoilWaterCalibration {
+  rechargeEfficiency: number;
+  maxStoredMm: number;
+}
+
 export interface WaterAssessment {
   /** Undefined when no water year is complete. */
   balance?: CropWaterBalance;
@@ -103,6 +109,7 @@ export function assessWaterBalance(
   crop: AgronomicCropProfile,
   climate: WaterClimate,
   soil?: SoilWaterOptions,
+  calibration?: SoilWaterCalibration,
 ): WaterAssessment {
   const { growingStartMonth, growingEndMonth } = crop.calendar;
   const fullWaterNeedMm = crop.waterRequirementMm.max;
@@ -140,7 +147,10 @@ export function assessWaterBalance(
     }
     if (!complete) continue;
 
-    const stored = Math.min(storage.capMm, SOIL_RECHARGE_EFFICIENCY * before);
+    const stored = Math.min(
+      calibration?.maxStoredMm ?? storage.capMm,
+      (calibration?.rechargeEfficiency ?? SOIL_RECHARGE_EFFICIENCY) * before,
+    );
     const supply = Math.min(fullWaterNeedMm, during + stored);
     const share = supply / fullWaterNeedMm;
     seasons++;

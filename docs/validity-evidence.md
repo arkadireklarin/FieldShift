@@ -7,7 +7,7 @@
 | Su açığı yalnızca uyarıydı | Sulamasız tarlada beklenen verim, susuz kalmayan verimin %40'ının altındaysa ürün planlara giremez. |
 | Eksik iklim göstergesi puanı yükseltebiliyordu | Sıcaklık ve yağışın her biri için beklenen sezonların en az yarısı tam olmalı. Aksi halde ürün puanlanmaz. |
 | Melbourne için İç Anadolu takvimi dönüyordu | Pilot sınırı dışındaki noktalar yalnızca NASA POWER iklim geçmişini alır. Puan ve plan üretilmez. |
-| Sıralama saha sonuçlarıyla karşılaştırılmamıştı | Model, yayımlanmış üç saha denemesinin sekiz sonucuyla her istekte yeniden karşılaştırılır. |
+| Sıralama saha sonuçlarıyla karşılaştırılmamıştı | Model, yayımlanmış dört saha denemesinin on bir sonucuyla her istekte yeniden karşılaştırılır. Beşi parametreleri belirlemeyen sonuçlardır. |
 | Maliyet değerlendirilmemişti | Arayüzde üreticinin kendi rakamlarıyla brüt marj hesabı var. İşletim maliyeti aşağıda. |
 
 ## Su dengesi ve yerel toprak girdileri
@@ -40,7 +40,7 @@ Beklenen verim payı FAO-33 bağıntısıyla hesaplanır: `1 − Ky × (1 − ar
 
 ## Saha sonuçlarıyla karşılaştırma
 
-Konya merkez için NASA POWER 2021–2025 kaydı kullanıldı. Denemeler başka yıllarda yapıldı, bu yüzden karşılaştırma iklim ortalamaları arasındadır.
+Konya merkez ve Ankara için NASA POWER 2021–2025 kayıtları kullanıldı. Denemeler başka yıllarda yapıldı, bu yüzden karşılaştırma iklim ortalamaları arasındadır.
 
 | Kontrol | Saha | Model |
 |---|---|---|
@@ -50,10 +50,13 @@ Konya merkez için NASA POWER 2021–2025 kaydı kullanıldı. Denemeler başka 
 | Ayçiçeğinin yağış ve topraktan su tüketimi | 235 mm | 226 mm |
 | Ayçiçeği kontrol parseli verimi, tam sulamaya oranla | %53 | %50 |
 | Ayçiçeğinde tam sulama suyu | 447 mm | 424 mm |
+| Ayçiçeği su tüketimi, yalnızca nohut denemesinin toprak ayarıyla | 235 mm | 232 mm |
+| Nohut su tüketimi, yalnızca ayçiçeği denemesinin toprak ayarıyla | 241 mm | 244 mm |
+| Ankara'da susuz buğday verimi, tam sulamaya oranla | %60 | %56 |
 | Kuru koşulda buğday yetişir | 1320–2243 kg/ha | Uygun, %47 verim payı |
 | Buğday başka üründen sonra daha iyi | 1320–2243 kg/ha, üst üste buğdayda 543 kg/ha | Geçiş puanı 70–100, buğday üstüne buğday 5 |
 
-İlk altı satır, parametreleri belirleyen iki Konya denemesinden gelir ve kalibrasyon kontrolüdür. Son iki satır bağımsız bir denemeden gelir: [Cayci ve ark. (2009)](https://doi.org/10.1016/j.still.2008.09.004). Diğer kaynaklar: [Tarı ve Bahçeci (2022)](https://doi.org/10.15316/SJAFS.2022.020), [Gündüz ve ark. (2018)](https://dergipark.org.tr/tr/download/article-file/595097), [FAO-56](https://www.fao.org/4/x0490e/x0490e0e.htm). Kontroller `src/lib/validation/evidence.test.ts` içinde test olarak çalışır.
+İlk altı satır, parametreleri belirleyen iki Konya denemesinden gelir ve kalibrasyon kontrolüdür. Sonraki iki satırda toprak suyu ayarı tek bir denemeden alınır ve öteki denemenin sonucu tahmin edilir. Son üç satır hiçbir parametreyi belirlemeyen denemelerden gelir: Ankara'da dört sezonluk buğday denemesi [Ilbeyi ve ark. (2006)](https://doi.org/10.1016/j.agwat.2005.08.005) ve 21 yıllık rotasyon denemesi [Cayci ve ark. (2009)](https://doi.org/10.1016/j.still.2008.09.004). Diğer kaynaklar: [Tarı ve Bahçeci (2022)](https://doi.org/10.15316/SJAFS.2022.020), [Gündüz ve ark. (2018)](https://dergipark.org.tr/tr/download/article-file/595097), [FAO-56](https://www.fao.org/4/x0490e/x0490e0e.htm). Kontroller `src/lib/validation/evidence.test.ts` içinde test olarak çalışır.
 
 ## Çiftçi maliyeti
 
