@@ -1,25 +1,42 @@
 # FieldShift jüri demosu
 
-## 90 saniyelik akış
+Ankara yerel etkinliğindeki canlı anlatım için. Gönderim sayfası ve demo materyali İngilizce olmak zorunda; onlar [submission.md](submission.md) içinde.
 
-1. Çumra harita noktasını açın. Önceki ürün olarak **Chickpea**, sulama için **Yes** seçin ve pH’ı boş bırakın. Çiftçinin ilk hasadı en geç **Temmuz 2027** istediğini söyleyin. **340 m³/da** değerini örnek sezonluk net kota olarak girin. İsterseniz mevcut plan örneği olarak buğday → nadas → buğday ekleyin.
-2. İlk hasat sınırının aday havuzunu nasıl daralttığını gösterin. **Dry-year replay** altında 2025’in aylık NASA POWER verisiyle aynı kuralların yeniden çalıştığını gösterin. Kota, her ürün sezonunda kök bölgesine ulaşabilen net suyu temsil eder.
-3. **Calendar-only benchmark** bölümünde iki planı yan yana açın. Takvim yöntemi ilk hasat ve bitişi öne alır. FieldShift seçeneği daha fazla model puanı alır ve daha yüksek su tahmini taşır. Kotayı **310** yapıp lider sıranın değiştiğini, **300** yapıp öneri kalmadığını gösterin.
-4. Kotayı tekrar **340 m³/da** yapın ve diğer tüm Çumra girdileri sabitken **yalnızca tek bir yerel toprak girdisini** değiştirin: **Effective root-zone depth** alanına **50 cm** (sığ kaliş tabakası) girin. **Local soil, field parcel & NASA POWER decision chain** panelinde kış yağışını toprakta depolama sınırının 130 mm’den 65 mm’ye düştüğünü, baharlık nohudun kök bölgesi sulama ihtiyacının 340 m³/da kotasını aştığını ve lider planın **Mercimek → buğday → nohut** yerine kış yağışını sezon içinde kullanan **Mercimek → arpa → buğday** planına geçtiğini gösterin. Aynı panelde NASA POWER `T2M` ve `PRECTOTCORR` verisinin ve çizilen parsel alanının (dekar) karar zincirindeki yerini ve **Soil health** tablosunda mevcut rotasyonla aile tekrarı / ana ürünsüz ay farkını gösterin.
-5. **Published field evidence** bölümünde parametreleri belirleyen saha çalışmalarıyla ayrı tutarlılık kontrollerini gösterin. Gerçek üretici denemesi için [etki pilotu](impact-pilot.md) akışını kullanın.
+Aşağıdaki sayılar tek bir canlı çalıştırmadan alındı: Çumra (37,5667° K, 32,7750° D), son ürün buğday, sulama yok, mevcut plan buğday → nadas → buğday. Planlama Aralık 2026'da başlıyor.
 
-## Referans çalıştırma
+## 2–3 dakikalık akış
 
-14 Kasım 2026, Çumra, önceki ürün nohut, sulama mevcut ve pH boş. Aralık 2026 planlama başlangıcıyla Temmuz 2027 sınırına 120 adaydan 20’si uydu. NASA POWER 2021–2025 serisinde en az yağışlı tam yıl 2025’ti. Grid tahmini 347,3 mm, beş tam yılın medyanı 527,9 mm idi.
+1. **Sorun (20 sn).** "Konya'da yaygın bir düzen var: buğday, nadas, buğday. Yeraltı suyu düşüyor. Çiftçiye 'bütün planını değiştir' demek işe yaramıyor; tek traktörü, tek alıcısı var."
+2. **Tarla (15 sn).** Haritada Çumra noktası. Formda iki soru: son ektiğiniz ürün ve sulama imkânınız. Mevcut planı girin: buğday, nadas, buğday. **Tarlamı değerlendir.**
+3. **Cevap (30 sn).** Tek kart: *"Planınızda tek bir şeyi değiştirin: 1. ekimde buğday yerine nohut."* Alt alta iki şerit: şimdiki plan ve öneri; değişen tek kutu yeşil. Gerekçe: 2 tekrar kırılıyor, tarla 8 ay daha az boş kalıyor (24 aydan 16 aya), plan 44 ay yerine 32 ay sürüyor.
+4. **Neden bu (30 sn).** "Model 18 tek döngü değişikliğini sıraladı." Dört adımı sırayla söyleyin. Sulamasız ayçiçeği ve mısır eleniyor: yağış, su ihtiyaçlarının %33 ve %18'ini karşılıyor, eşik %40.
+5. **Kurak yıl (15 sn).** "2025 gibi bir yılda bu plan yine uygun kalıyor." Kayıttaki en kurak tam yıl 347 mm, medyan 528 mm.
+6. **Kanıt (30 sn).** **Hesabı ve kaynakları göster** → *Published field evidence*. 11 kontrolün 11'i tutuyor; 5'i modelin hiçbir parametresini belirlemeyen denemelerden. Ankara'da dört sezonluk buğday denemesi: sahada %60, modelde %56.
+7. **Kapanış (15 sn).** "Verim ya da gelir sözü vermiyoruz. NASA verisi ızgara tahmini, tarlanın kendi ölçümü değil. Kararı çiftçi ve ziraat mühendisi verir."
 
-| Sezonluk kota | İki çalıştırmada da kotaya uyan | En yüksek puanlı kalan plan |
+Formülle ya da grafikle başlamayın. Teknik derinlik 6. adımda geliyor.
+
+## Soru gelirse: kısıtlar nasıl çalışıyor
+
+Sulu tarla senaryosu, önceki ürün nohut, ilk hasat en geç Temmuz 2027. 120 adayın 20'si bu tarihe yetişiyor.
+
+| Sezonluk kota | Kotaya uyan | En yüksek puanlı kalan plan |
 |---|---:|---|
 | 340 m³/da | 6 | Mercimek → buğday → nohut |
 | 310 m³/da | 2 | Mercimek → arpa → buğday |
 | 300 m³/da | 0 | En düşük modellenen kota 308,89 m³/da |
 
-340 m³/da örneğinde takvim yönteminin planı 32 ay sürüyor ve tarihsel modelde 77,8 puan alıyor. FieldShift planı 33 ay sürüyor ve 82,3 puan alıyor. Kurak yıl tekrarında en çok su isteyen sezonun tahmini sırasıyla 308,89 ve 313,20 m³/da. İki planın ilk hasadı da Temmuz 2027. Sayılar koordinat, tarih ve profil varsayımlarıyla birlikte okunmalı.
+Kota, her ürün sezonunda kök bölgesine ulaşan net suyu temsil eder; pompalanan su sistem randımanına göre daha fazladır. Aynı kural kurak yıl tekrarında da çalışıyor.
 
-Bu akış, hasat hedefi ile sulama kotasının öneriyi nasıl değiştirdiğini gösterir. Sıralama puanı model çıktısı, su miktarı net kök bölgesi tahmini, 2025 koşulları ise geçmişten yeniden oynatılan tek bir örnektir. Çiftçi benimsemesi, ölçülen su kullanımı ve ekonomik sonuçlar saha pilotuyla belirlenir.
+## Hazırlık
 
-Tarla bazlı rotasyon ve su tahsisi birlikte daha önce çalışıldı. FieldShift’in gösterdiği katkı, üreticinin kendi hasat sınırını ve sezonluk kotasını değiştirdiğinde önerinin neden değiştiğini NASA POWER verisiyle yerel bir örnekte izleyebilmesidir. [Arazi ve su tahsisi üzerine çok yıllı rotasyon çalışması](https://www.sciencedirect.com/science/article/pii/S0378377425002197)
+- Demodan önce Çumra noktası için bir analiz çalıştırın: sonuç 24 saat önbellekte kalır, NASA yavaşlarsa demo durmaz.
+- Üretim derlemesiyle gösterin (`npm run build && npm run start`). Geliştirme modunda haritada konsol hataları çıkıyor.
+- Dil düğmesi sağ üstte: jüri İngilizce isterse tek tıkla geçin.
+- Mevcut planı girmeden de çalışır; o zaman kart "Gelecek sezon için güçlü seçenek: Nohut" der.
+
+## Söylenmeyecekler
+
+- Verim artışı, gelir artışı, su tasarrufu miktarı. Kazanım yalnızca dört ölçüyle ifade edilir: yetişmeyecek ürün, tekrar eden geçiş, en yüksek sezonluk sulama, ana ürünsüz ay.
+- "Doğrulandı." Model yayımlanmış saha sonuçlarıyla tutuyor; üretici tarlasında denenmedi.
+- "Benzersiz." Rotasyon planlama başka ürünlerde de var; ayırt edici olan tek değişiklik önerisi ve her istekte çalışan kanıt karşılaştırması.

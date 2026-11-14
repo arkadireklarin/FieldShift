@@ -63,6 +63,8 @@ The workspace opens in Turkish with an **English** switch. The result is one car
 - The optional comparison projects the grower's next three planned cycles using the same start month and regional calendar as the recommendations. Each plan ends after its third cycle, so durations can differ. A fallow cycle occupies 12 months from the first available month. Months without a primary crop also include gaps between crop cycles and can have ground cover. The comparison describes the projected schedule and crop diversity.
 - The server cache is process-local. Cold starts and different instances can require a fresh NASA POWER retrieval. If NASA POWER fails and no matching history is cached, analysis is unavailable until a retry succeeds.
 
+For the hackathon: [submission materials and demo](docs/submission.md) in English, and the [Turkish jury walkthrough](docs/jury-demo.md).
+
 See the [architecture and API contract](docs/architecture.md) and the [two-day task breakdown](docs/task-breakdown.md).
 
 The [Turkish validity evidence](docs/validity-evidence.md) covers the water constraint, the comparison with published field trials, the grower budget under **Costs and returns**, and operating costs.
