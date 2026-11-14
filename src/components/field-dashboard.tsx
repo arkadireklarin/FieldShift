@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { Coordinates, CropId, FieldSelection, RecommendResponse, RotationCycle } from "@/types/api";
+import type { Coordinates, CropId, FieldSelection, RecommendResponse, RotationCycle, SoilTexture } from "@/types/api";
 import ClimatePanel from "./climate-panel";
 import RecommendationPanel from "./recommendation-panel";
 import { cropLabels, rotationCycleLabels } from "./crop-labels";
@@ -11,7 +11,9 @@ import DecisionFeedback from "./decision-feedback";
 import { initialIntentLabels, isParticipantCode, participantCodePattern, type InitialIntent } from "./decision-feedback-export";
 import { requestRecommendation, type RequestState } from "./field-api";
 import PlanBudgetPanel from "./plan-budget-panel";
+import { MAX_ROOTING_DEPTH_CM, MIN_ROOTING_DEPTH_CM, SOIL_TEXTURE_WATER_MM_PER_M } from "@/lib/crops/water-balance";
 import { describeApplicability, findServiceRegion } from "@/lib/regions";
+import { describeSpatialContext } from "@/lib/regions/parcel";
 import type { DevelopmentFixture } from "./dev/field-fixture";
 import styles from "./field-dashboard.module.css";
 
@@ -44,6 +46,8 @@ export default function FieldDashboard() {
   const [polygon, setPolygon] = useState<Coordinates[]>([]);
   const [previousCrop, setPreviousCrop] = useState<CropId | "">("");
   const [irrigation, setIrrigation] = useState<FieldSelection["irrigation"] | "">("");
+  const [soilTexture, setSoilTexture] = useState<SoilTexture | "">("");
+  const [rootingDepthCm, setRootingDepthCm] = useState("");
   const [soilPh, setSoilPh] = useState("");
   const [compareCurrent, setCompareCurrent] = useState(false);
   const [currentCycles, setCurrentCycles] = useState<[RotationCycle | "", RotationCycle | "", RotationCycle | ""]>(["", "", ""]);
@@ -74,6 +78,8 @@ export default function FieldDashboard() {
 
     const field: FieldSelection = { location, previousCrop, irrigation };
     if (polygon.length > 0) field.polygon = polygon;
+    if (soilTexture !== "") field.soilTexture = soilTexture;
+    if (rootingDepthCm !== "") field.rootingDepthCm = Number(rootingDepthCm);
     if (soilPh !== "") field.measuredSoilPh = Number(soilPh);
     const latestFirstHarvest = new FormData(event.currentTarget).get("latestFirstHarvest");
     if (typeof latestFirstHarvest === "string" && latestFirstHarvest) field.latestFirstHarvest = latestFirstHarvest;
@@ -135,6 +141,7 @@ export default function FieldDashboard() {
   const error = analysis.status === "error" ? analysis.error : undefined;
   const selectedCoordinates = `${formatCoordinate(location.lat, "N", "S")} · ${formatCoordinate(location.lon, "E", "W")}`;
   const outsidePilotArea = findServiceRegion(location) ? undefined : describeApplicability(undefined).message;
+  const spatialPreview = describeSpatialContext(location, polygon);
 
   return (
     <div className={styles.workspace}>
@@ -191,6 +198,42 @@ export default function FieldDashboard() {
                 setPolygon(ring);
               }}
             />
+            <div className={styles.spatialBox} aria-label="Parcel and NASA POWER grid cell role">
+              <div className={styles.spatialRow}>
+                <strong>NASA POWER grid cell (0.5° × 0.625°):</strong>{" "}
+                <span>
+                  {spatialPreview.nasaGridCell.south.toFixed(3)}°–{spatialPreview.nasaGridCell.north.toFixed(3)}° N,{" "}
+                  {spatialPreview.nasaGridCell.west.toFixed(3)}°–{spatialPreview.nasaGridCell.east.toFixed(3)}° E
+                </span>
+              </div>
+              {spatialPreview.parcel ? (
+                <div className={styles.spatialParcel}>
+                  <p>
+                    <strong>Drawn parcel:</strong> {spatialPreview.parcel.areaDa.toFixed(1)} da ({spatialPreview.parcel.areaHa.toFixed(2)} ha ·{" "}
+                    {spatialPreview.parcel.perimeterM} m perimeter · {spatialPreview.parcel.vertexCount} corners).{" "}
+                    {spatialPreview.parcel.withinSingleNasaGridCell
+                      ? "All corners lie in the same NASA POWER climate grid cell; parcel area scales per-decare water and margin to whole-field totals, while local soil inputs differentiate fields inside the cell."
+                      : "Corners span multiple NASA POWER grid cells; the selected pin sets the queried cell."}
+                  </p>
+                  {!spatialPreview.parcel.queryPointInsideParcel && (
+                    <button
+                      type="button"
+                      className={styles.centroidButton}
+                      onClick={() => {
+                        resetAnalysis();
+                        setLocation(spatialPreview.parcel!.centroid);
+                      }}
+                    >
+                      Move climate pin to parcel center ({spatialPreview.parcel.centroid.lat.toFixed(4)}° N, {spatialPreview.parcel.centroid.lon.toFixed(4)}° E)
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className={styles.spatialHint}>
+                  <strong>Role in analysis:</strong> The pin queries regional NASA POWER climate for this 0.5° × 0.625° grid cell. Draw a field boundary above to calculate parcel area (decares) for whole-field water and gross margin totals, and enter local soil properties on the right to tailor root-zone water storage.
+                </p>
+              )}
+            </div>
             {outsidePilotArea && <p className={styles.pilotArea} role="status">{outsidePilotArea}</p>}
           </article>
 
@@ -238,15 +281,50 @@ export default function FieldDashboard() {
                   <small id="quota-help">Enter the water that can reach the roots in each crop season, after delivery losses. 1 mm over 1 decare equals 1 m³.</small>
                 </label>
               )}
-              <label className={styles.fieldLabel}>
-                <span className={styles.labelRow}>Measured soil pH <span>Optional</span></span>
-                <input type="number" name="soilPh" min="0" max="14" step="any" inputMode="decimal"
-                  aria-describedby="ph-help" placeholder="e.g. 7.2" value={soilPh} onChange={(event) => {
+              <fieldset className={styles.soilGroup} aria-describedby="soil-group-help">
+                <legend>Local soil properties <span>Optional · from soil report or field knowledge</span></legend>
+                <p id="soil-group-help">
+                  NASA POWER supplies grid-cell weather. Local soil texture and root-zone depth set how much pre-planting winter rain the root zone can store (FAO-56 tables 19 &amp; 22). When left blank, the model uses the 130 mm Konya trial cap and omits pH.
+                </p>
+                <label className={styles.fieldLabel}>
+                  <span className={styles.labelRow}>Soil texture class <span>Optional · mm/m</span></span>
+                  <select name="soilTexture" value={soilTexture} aria-describedby="soil-texture-help" onChange={(event) => {
                     resetAnalysis();
-                    setSoilPh(event.target.value);
-                  }} />
-                <small id="ph-help">Leave blank if you don’t have a measurement.</small>
-              </label>
+                    setSoilTexture(event.target.value as SoilTexture | "");
+                  }}>
+                    <option value="">Unmeasured (default 130 mm/m Konya trial cap)</option>
+                    {(Object.entries(SOIL_TEXTURE_WATER_MM_PER_M) as [SoilTexture, (typeof SOIL_TEXTURE_WATER_MM_PER_M)[SoilTexture]][]).map(
+                      ([id, info]) => (
+                        <option key={id} value={id}>
+                          {info.label} — {info.mmPerM} mm/m (FAO-56 {info.faoRangeMmPerM})
+                        </option>
+                      ),
+                    )}
+                  </select>
+                  <small id="soil-texture-help">Extractable preseason water capacity per meter of root zone (FAO-56 table 19).</small>
+                </label>
+                <label className={styles.fieldLabel}>
+                  <span className={styles.labelRow}>Effective root-zone depth <span>Optional · cm</span></span>
+                  <input type="number" name="rootingDepthCm" min={MIN_ROOTING_DEPTH_CM} max={MAX_ROOTING_DEPTH_CM} step="1"
+                    inputMode="numeric" aria-describedby="root-depth-help" placeholder="e.g. 50 (shallow caliche) or 120"
+                    value={rootingDepthCm} onChange={(event) => {
+                      resetAnalysis();
+                      setRootingDepthCm(event.target.value);
+                    }} />
+                  <small id="root-depth-help">
+                    Unrestricted soil depth above hardpan, gravel or water table ({MIN_ROOTING_DEPTH_CM}–{MAX_ROOTING_DEPTH_CM} cm), bounded by each crop’s FAO-56 table 22 max root depth.
+                  </small>
+                </label>
+                <label className={styles.fieldLabel}>
+                  <span className={styles.labelRow}>Measured soil pH <span>Optional · pH (H₂O)</span></span>
+                  <input type="number" name="soilPh" min="0" max="14" step="any" inputMode="decimal"
+                    aria-describedby="ph-help" placeholder="e.g. 7.2 or 8.2" value={soilPh} onChange={(event) => {
+                      resetAnalysis();
+                      setSoilPh(event.target.value);
+                    }} />
+                  <small id="ph-help">Compared with FAO EcoCrop pH bands (10% suitability weight). Omitted when blank.</small>
+                </label>
+              </fieldset>
               <label className={styles.fieldLabel}>
                 <span className={styles.labelRow}>Latest acceptable first harvest <span>Optional</span></span>
                 <input type="month" id="latest-first-harvest" name="latestFirstHarvest" min="1900-01" max="2199-12"

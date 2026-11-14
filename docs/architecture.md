@@ -19,9 +19,9 @@ FieldShift uses one Next.js App Router application. A browser picks a field near
 
 | Type | What callers exchange |
 | --- | --- |
-| `FieldSelection` | Required latitude/longitude, previous crop, and irrigation availability. Optional polygon, measured pH, three-cycle `currentRotation`, latest first-harvest month, and seasonal net irrigation quota. |
+| `FieldSelection` | Required latitude/longitude, previous crop, and irrigation availability. Optional polygon, measured pH, soil texture (`coarse`, `medium`, `fine`), effective root-zone depth (`20–200 cm`), three-cycle `currentRotation`, latest first-harvest month, and seasonal net irrigation quota. |
 | `ClimateSummary` | Monthly mean air temperature in °C and total precipitation in mm, plus expected and valid day counts per metric. Null means insufficient coverage. |
-| `RecommendResponse` | The `ClimateSummary` used for scoring, regional `applicability`, crop suitability, ranked rotations, decision priorities, `modelEvidence`, and their provenance and limitations. Includes `rotationComparison` when the user provides a current rotation. |
+| `RecommendResponse` | The `ClimateSummary` used for scoring, regional `applicability`, `spatialContext` (NASA grid cell and drawn parcel area/role), `soilAssessment` (local soil inputs, NASA decision chain, baseline comparison, and single-input sensitivity checks), `soilHealth` (family repetition, uncropped duration, and required field evidence), crop suitability, ranked rotations, decision priorities, `modelEvidence`, and their provenance and limitations. Includes `rotationComparison` when the user provides a current rotation. |
 | `CropProfile` | One of six crop IDs, display name, family, provisional validation status, and references. Developer B can add referenced scoring inputs when the model is agreed. |
 | `CropSuitability` | Per-crop 0–100 heuristic score or null, a `feasibility` status with reasons, the seasonal `water` balance, signed factors with explanations, and limitations. Only feasible crops enter rotations. |
 | `RotationRecommendation` | Exactly three ordered future primary crops, a 0–100 heuristic score, explanations, and limitations. |

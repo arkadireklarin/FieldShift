@@ -67,6 +67,10 @@ describe("FieldShift API", () => {
     ["string coordinates", JSON.stringify({ ...field, location: { lat: "37.57", lon: 32.77 } }), /numeric location/],
     ["out-of-range coordinate", JSON.stringify({ ...field, location: { lat: 37.57, lon: 181 } }), /numeric location/],
     ["invalid pH", JSON.stringify({ ...field, measuredSoilPh: 15 }), /measured soil pH/],
+    ["invalid soil texture", JSON.stringify({ ...field, soilTexture: "peat" }), /soil texture/],
+    ["too shallow rooting depth", JSON.stringify({ ...field, rootingDepthCm: 10 }), /root-zone depth/],
+    ["too deep rooting depth", JSON.stringify({ ...field, rootingDepthCm: 250 }), /root-zone depth/],
+    ["string rooting depth", JSON.stringify({ ...field, rootingDepthCm: "60" }), /root-zone depth/],
     ["invalid boundary", JSON.stringify({ ...field, polygon: [field.location] }), /field boundary/],
     ["too few current rotation cycles", JSON.stringify({ ...field, currentRotation: ["wheat", "fallow"] }), /exactly three cycles/],
     ["too many current rotation cycles", JSON.stringify({ ...field, currentRotation: ["wheat", "fallow", "wheat", "maize"] }), /exactly three cycles/],
@@ -130,6 +134,11 @@ describe("FieldShift API", () => {
     });
     expect(result.provenance[0]).toEqual(result.climate.provenance);
     expect(result.applicability).toMatchObject({ status: "validated_region", region: { id: "central-anatolia" } });
+    expect(result.spatialContext?.parcel?.vertexCount).toBe(3);
+    expect(result.spatialContext?.parcel?.areaDa).toBeGreaterThan(0);
+    expect(result.soilAssessment?.inputs).toHaveLength(3);
+    expect(result.soilAssessment?.singleInputChecks).toHaveLength(3);
+    expect(result.soilHealth?.requiredFieldEvidence).toHaveLength(3);
     expect(result.modelEvidence?.site).toContain("Konya");
     expect(result.modelEvidence?.checks.length).toBeGreaterThan(0);
     expect(result.suitability).toHaveLength(6);

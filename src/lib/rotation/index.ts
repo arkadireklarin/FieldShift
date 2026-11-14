@@ -212,9 +212,9 @@ function byHarvestDeadline(plans: RotationPlan[], deadline: string | undefined) 
   return deadline ? plans.filter((plan) => plan.schedule[0].harvestMonth <= deadline) : plans;
 }
 
-function seasonalWaterByCrop(climate: ClimateSummary) {
+function seasonalWaterByCrop(climate: ClimateSummary, field: FieldSelection) {
   return new Map(CROP_PROFILES.map((profile) => {
-    const water = assessWaterBalance(profile, climate);
+    const water = assessWaterBalance(profile, climate, field);
     return [profile.id, water.sufficient ? water.balance?.netIrrigationRequirementMm : undefined] as const;
   }));
 }
@@ -345,8 +345,8 @@ export function analyzeRotations(
   } : undefined;
   const quota = field.irrigationQuotaM3PerDa;
   const stress = quota !== undefined || deadlinePlans.length > 0 ? buildHistoricalStress(climate) : undefined;
-  const water = quota === undefined ? undefined : seasonalWaterByCrop(climate);
-  const dryWater = stress && water ? seasonalWaterByCrop(stress.climate) : undefined;
+  const water = quota === undefined ? undefined : seasonalWaterByCrop(climate, field);
+  const dryWater = stress && water ? seasonalWaterByCrop(stress.climate, field) : undefined;
   let irrigationQuota: IrrigationQuotaResult | undefined;
   let plans = deadlinePlans;
   let selectedDryPlans = stress ? byHarvestDeadline(enumerateRankedRotations(stress.climate, field, firstMonth), field.latestFirstHarvest) : [];

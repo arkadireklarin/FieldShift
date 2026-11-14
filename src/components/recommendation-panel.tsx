@@ -7,6 +7,9 @@ import type {
   RotationRecommendation,
   RotationStrategy,
   RotationStressTest,
+  SoilAssessment,
+  SoilHealthComparison,
+  SpatialContext,
 } from "@/types/api";
 import { cropLabels, rotationCycleLabels } from "./crop-labels";
 import { rotationPriorityLabels } from "./rotation-priority-labels";
@@ -148,6 +151,10 @@ function CropCard({ entry, rank }: { entry: CropSuitability; rank?: number }) {
       {entry.water && (
         <dl className={`${styles.calendarMetrics} ${styles.cropWater}`}>
           <div><dt>Mean seasonal irrigation at the root zone</dt><dd><WaterVolume volume={entry.water.netIrrigationRequirementMm} /></dd></div>
+          <div>
+            <dt>Preseason stored soil water (cap {waterFormat.format(entry.water.soilStorageCapMm)} mm)</dt>
+            <dd>{waterFormat.format(entry.water.storedSoilWaterMm)} mm</dd>
+          </div>
           <div><dt>Modeled water need met without irrigation</dt><dd>{percentFormat.format(entry.water.rainfedSupplyShare)}</dd></div>
           <div><dt>Complete water seasons</dt><dd>{entry.water.seasons}</dd></div>
         </dl>
@@ -233,7 +240,7 @@ function RotationCalendarCard({ calendar, label, href, benchmark, checks }: {
   );
 }
 
-function IrrigationQuotaPanel({ quota }: { quota: IrrigationQuota }) {
+function IrrigationQuotaPanel({ quota, parcelAreaDa }: { quota: IrrigationQuota; parcelAreaDa?: number }) {
   const hasReplay = quota.dryYearMatchingCount !== undefined;
 
   return (
@@ -245,6 +252,12 @@ function IrrigationQuotaPanel({ quota }: { quota: IrrigationQuota }) {
           : <><strong>{quota.matchingCount} of {quota.candidateCount}</strong> candidate rotations fit a cap of <strong><WaterVolume volume={quota.limitM3PerDa} /></strong>.</>}
         {hasReplay ? " Each crop season must fit in both the historical model and the dry-year replay." : " Each crop season must fit in the historical model."}
       </p>
+      {parcelAreaDa !== undefined && parcelAreaDa > 0 && (
+        <p>
+          Across the drawn <strong>{waterFormat.format(parcelAreaDa)} da</strong> parcel, this cap equals{" "}
+          <strong>{waterFormat.format(quota.limitM3PerDa * parcelAreaDa)} m³</strong> of net root-zone water per crop season.
+        </p>
+      )}
       {quota.withoutWaterEstimateCount > 0 && (
         <p>Water estimates were unavailable for {quota.withoutWaterEstimateCount} {quota.withoutWaterEstimateCount === 1 ? "candidate" : "candidates"}.</p>
       )}
@@ -316,6 +329,207 @@ function ModelEvidencePanel({ evidence }: { evidence: ModelEvidence }) {
       })}
       <p>{evidence.pending}</p>
     </details>
+  );
+}
+
+function SoilDecisionChainPanel({
+  soilAssessment,
+  spatialContext,
+}: {
+  soilAssessment: SoilAssessment;
+  spatialContext?: SpatialContext;
+}) {
+  const { inputs, nasaDecisionChain, baselineComparison, singleInputChecks } = soilAssessment;
+
+  return (
+    <section className={styles.soilChain} id="soil-decision-chain" aria-labelledby="soil-decision-chain-title">
+      <div className={styles.soilChainHead}>
+        <h3 id="soil-decision-chain-title">Local soil, field parcel &amp; NASA POWER decision chain</h3>
+        <p>
+          How regional NASA POWER grid-cell climate interacts with local soil inputs and field geometry to determine water storage, crop suitability, and rotation ranking.
+        </p>
+      </div>
+
+      {spatialContext && (
+        <div className={styles.spatialCards}>
+          <div className={styles.spatialCard}>
+            <h4>NASA POWER 0.5° × 0.625° climate grid cell</h4>
+            <p>{spatialContext.climateRole}</p>
+          </div>
+          <div className={styles.spatialCard}>
+            <h4>Field parcel boundary &amp; local scale</h4>
+            <p>{spatialContext.parcelRole}</p>
+          </div>
+        </div>
+      )}
+
+      <div className={styles.nasaChainBox}>
+        <h4>Where NASA POWER temperature and rainfall enter this decision</h4>
+        <ul className={styles.textList}>
+          <li><strong>Temperature (T2M):</strong> {nasaDecisionChain.temperatureRole}</li>
+          <li><strong>Precipitation (PRECTOTCORR):</strong> {nasaDecisionChain.precipitationRole}</li>
+          <li><strong>Soil–climate interaction:</strong> {nasaDecisionChain.soilInteractionRole}</li>
+        </ul>
+      </div>
+
+      <div className={styles.soilInputsSection}>
+        <h4>Local soil inputs, assumptions &amp; model effect</h4>
+        <ul className={styles.soilInputsGrid}>
+          {inputs.map((input) => (
+            <li className={styles.soilInputCard} key={input.id}>
+              <div className={styles.soilInputHeader}>
+                <strong>{input.label}</strong>
+                <span className={input.status === "provided" ? styles.badgeProvided : styles.badgeDefault}>
+                  {input.status === "provided" ? "Provided" : input.status === "omitted" ? "Omitted" : "Default assumed"}
+                </span>
+              </div>
+              <p className={styles.soilInputValue}>{input.value}</p>
+              <p><strong>Assumption:</strong> {input.assumption}</p>
+              <p><strong>Effect:</strong> {input.effect}</p>
+              <p><a href={input.source.url} target="_blank" rel="noreferrer">{input.source.title}</a></p>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className={styles.baselineBox} data-changed={baselineComparison.hasLocalSoilInputs || undefined}>
+        <h4>
+          {baselineComparison.hasLocalSoilInputs
+            ? "Effect of your entered local soil input(s) vs. unmeasured baseline"
+            : "Current soil baseline (unmeasured 130 mm cap, no pH)"}
+        </h4>
+        <p>{baselineComparison.summary}</p>
+        {baselineComparison.hasLocalSoilInputs && (
+          <div className={styles.tableWrap}>
+            <table className={styles.soilTable}>
+              <thead>
+                <tr>
+                  <th>Crop</th>
+                  <th>Storage cap (mm)</th>
+                  <th>Stored soil water (mm)</th>
+                  <th>Net irrigation (m³/da)</th>
+                  <th>Rainfed yield share</th>
+                  <th>Score (/100)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {baselineComparison.cropChanges.map((change) => (
+                  <tr key={change.crop}>
+                    <td><strong>{cropLabels[change.crop]}</strong></td>
+                    <td>{waterFormat.format(change.baselineStorageCapMm)} → {waterFormat.format(change.currentStorageCapMm)}</td>
+                    <td>
+                      {change.baselineStoredWaterMm !== undefined && change.currentStoredWaterMm !== undefined
+                        ? `${waterFormat.format(change.baselineStoredWaterMm)} → ${waterFormat.format(change.currentStoredWaterMm)}`
+                        : "–"}
+                    </td>
+                    <td>
+                      {change.baselineNetIrrigationMm !== undefined && change.currentNetIrrigationMm !== undefined
+                        ? `${waterFormat.format(change.baselineNetIrrigationMm)} → ${waterFormat.format(change.currentNetIrrigationMm)}`
+                        : "–"}
+                    </td>
+                    <td>
+                      {change.baselineRainfedYieldShare !== undefined && change.currentRainfedYieldShare !== undefined
+                        ? `${percentFormat.format(change.baselineRainfedYieldShare)} → ${percentFormat.format(change.currentRainfedYieldShare)}`
+                        : "–"}
+                    </td>
+                    <td>
+                      {change.baselineScore ?? "–"} → {change.currentScore ?? "–"}
+                      {change.baselineFeasible !== change.currentFeasible && (
+                        <span> ({change.currentFeasible ? "newly feasible" : "excluded"})</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <details className={styles.probesDetails} open={!baselineComparison.hasLocalSoilInputs}>
+        <summary>Single-input soil sensitivity checks on this field (other inputs held constant)</summary>
+        <p className={styles.probesIntro}>
+          Each row below starts from the unmeasured soil baseline on this field’s NASA POWER record and changes <strong>only one local soil input</strong> to show which assumption, water calculation, and rotation plan changes.
+        </p>
+        <ul className={styles.probesList}>
+          {singleInputChecks.map((probe) => (
+            <li className={styles.probeCard} key={probe.id} data-changed={probe.planChanged || undefined}>
+              <div className={styles.soilInputHeader}>
+                <strong>{probe.inputLabel}: {probe.changedValue}</strong>
+                {probe.planChanged && <span className={styles.badgeProvided}>Changes top plan</span>}
+              </div>
+              <p><strong>Assumption changed:</strong> {probe.assumptionChanged}</p>
+              <p><strong>Calculation changed:</strong> {probe.calculationEffect}</p>
+              <p><strong>Plan effect:</strong> {probe.planEffect}</p>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </section>
+  );
+}
+
+function SoilHealthPanel({ soilHealth }: { soilHealth: SoilHealthComparison }) {
+  const rows = [
+    ...(soilHealth.current ? [soilHealth.current] : []),
+    ...soilHealth.recommended,
+  ];
+
+  return (
+    <section className={styles.soilChain} id="soil-health-comparison" aria-labelledby="soil-health-title">
+      <div className={styles.soilChainHead}>
+        <h3 id="soil-health-title">Soil health: family repetition, uncropped duration &amp; required field evidence</h3>
+        <p>
+          Compares botanical family repetition (following {cropLabels[soilHealth.previousCrop]}) and months without a primary crop across plans, and specifies the field measurements required before claiming ground cover or organic matter gains.
+        </p>
+      </div>
+
+      {rows.length > 0 && (
+        <div className={styles.tableWrap}>
+          <table className={styles.soilTable}>
+            <thead>
+              <tr>
+                <th>Plan</th>
+                <th>Sequence</th>
+                <th>Botanical family repetitions</th>
+                <th>Same-crop repetitions</th>
+                <th>Legume → cereal transitions</th>
+                <th>Months without primary crop</th>
+                <th>Crop families</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={`${row.label}-${row.sequence.join("-")}`}>
+                  <td><strong>{row.label}</strong></td>
+                  <td>{row.sequence.map((c) => rotationCycleLabels[c]).join(" → ")}</td>
+                  <td>{row.sameFamilyTransitions}</td>
+                  <td>{row.sameCropTransitions}</td>
+                  <td>{row.legumeToCerealTransitions}</td>
+                  <td>
+                    {row.uncroppedMonths} mo ({row.fallowMonths > 0 ? `${row.fallowMonths} mo fallow, ` : ""}{row.intercropGapMonths} mo between crops)
+                  </td>
+                  <td>{row.distinctFamilyCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className={styles.evidenceRequirements}>
+        <h4>Field data required before claiming ground cover, organic matter, or nitrogen gains</h4>
+        <ul className={styles.soilInputsGrid}>
+          {soilHealth.requiredFieldEvidence.map((item) => (
+            <li className={styles.soilInputCard} key={item.claim}>
+              <strong>{item.claim}</strong>
+              <p><strong>Why calendar output is not enough:</strong> {item.whyCalendarIsInsufficient}</p>
+              <p><strong>Required field measurement:</strong> {item.requiredMeasurement}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
@@ -447,8 +661,13 @@ export default function RecommendationPanel({
           {isFixture && result && <span className={styles.fixture}>Synthetic demo plans</span>}
         </div>
         {applicability && <p className={styles.region} data-outside={outsideRegion || undefined}>{applicability.message}</p>}
+        {result?.soilAssessment && !outsideRegion && (
+          <SoilDecisionChainPanel soilAssessment={result.soilAssessment} spatialContext={result.spatialContext} />
+        )}
         {result?.harvestDeadline && <DeadlineResult deadline={result.harvestDeadline} />}
-        {result?.irrigationQuota && <IrrigationQuotaPanel quota={result.irrigationQuota} />}
+        {result?.irrigationQuota && (
+          <IrrigationQuotaPanel quota={result.irrigationQuota} parcelAreaDa={result.spatialContext?.parcel?.areaDa} />
+        )}
         {result?.rotationStrategies && <RotationStrategies strategies={result.rotationStrategies} />}
         {result?.rotationStressTest && (
           <DryYearResult stress={result.rotationStressTest} hasDeadline={Boolean(result.harvestDeadline)} hasQuota={Boolean(result.irrigationQuota)} />
@@ -457,6 +676,7 @@ export default function RecommendationPanel({
           <RotationComparisonPanel comparison={result.rotationComparison} strategies={result.rotationStrategies ?? []}
             robustPlan={result.rotationStressTest?.robustPlan} />
         )}
+        {result?.soilHealth && !outsideRegion && <SoilHealthPanel soilHealth={result.soilHealth} />}
         {result?.calendarBenchmark && <CalendarBenchmarkPanel benchmark={result.calendarBenchmark} quota={result.irrigationQuota} />}
         {result?.rotations.length ? (
           <section className={styles.rankedSection} aria-labelledby="ranked-rotation-title">

@@ -1,6 +1,7 @@
 export type CropId = "wheat" | "barley" | "chickpea" | "lentil" | "sunflower" | "maize";
 export type RotationCycle = CropId | "fallow";
 export type RotationSequence = readonly [RotationCycle, RotationCycle, RotationCycle];
+export type SoilTexture = "coarse" | "medium" | "fine";
 
 export interface Coordinates {
   lat: number;
@@ -17,6 +18,10 @@ export interface FieldSelection {
   irrigationQuotaM3PerDa?: number;
   /** Omit when no field measurement is available. */
   measuredSoilPh?: number;
+  /** Optional soil texture class from a soil report or field observation. */
+  soilTexture?: SoilTexture;
+  /** Optional effective root-zone depth in centimeters, from 20 to 200 cm. */
+  rootingDepthCm?: number;
   /** Optional three-cycle continuation of the current practice, in order. */
   currentRotation?: RotationSequence;
   /** Inclusive latest month for the first modeled harvest, formatted YYYY-MM. */
@@ -86,6 +91,10 @@ export interface CropWaterBalance {
   seasonRainfallMm: number;
   /** Soil water carried into the season from the months before planting. */
   storedSoilWaterMm: number;
+  /** Maximum preseason soil water storage cap applied for this crop and soil profile, in mm. */
+  soilStorageCapMm: number;
+  /** Effective root-zone depth in meters when derived from local soil texture or rooting depth. */
+  effectiveRootDepthM?: number;
   /** Seasonal crop water use without water stress. */
   fullWaterNeedMm: number;
   /** Share of the full water need met by rainfall and stored soil water, from 0 to 1. */
@@ -220,6 +229,127 @@ export interface ModelEvidence {
   pending: string;
 }
 
+export interface NasaGridCellBounds {
+  south: number;
+  north: number;
+  west: number;
+  east: number;
+  resolutionDegrees: { lat: 0.5; lon: 0.625 };
+}
+
+export interface FieldParcelSummary {
+  vertexCount: number;
+  areaM2: number;
+  areaDa: number;
+  areaHa: number;
+  perimeterM: number;
+  centroid: Coordinates;
+  queryPointInsideParcel: boolean;
+  withinSingleNasaGridCell: boolean;
+  withinValidatedRegion: boolean;
+}
+
+export interface SpatialContext {
+  queryPoint: Coordinates;
+  nasaGridCell: NasaGridCellBounds;
+  parcel?: FieldParcelSummary;
+  climateRole: string;
+  parcelRole: string;
+}
+
+export interface SoilInputStatus {
+  id: "soilTexture" | "rootingDepthCm" | "measuredSoilPh";
+  label: string;
+  status: "provided" | "default_assumed" | "omitted";
+  value: string;
+  unit: string;
+  assumption: string;
+  effect: string;
+  source: { title: string; url: string };
+}
+
+export interface SoilCropChange {
+  crop: CropId;
+  baselineStorageCapMm: number;
+  currentStorageCapMm: number;
+  baselineStoredWaterMm?: number;
+  currentStoredWaterMm?: number;
+  baselineNetIrrigationMm?: number;
+  currentNetIrrigationMm?: number;
+  baselineRainfedYieldShare?: number;
+  currentRainfedYieldShare?: number;
+  baselineScore: number | null;
+  currentScore: number | null;
+  baselineFeasible: boolean;
+  currentFeasible: boolean;
+}
+
+export interface SingleSoilInputProbe {
+  id: string;
+  inputLabel: string;
+  changedValue: string;
+  assumptionChanged: string;
+  calculationEffect: string;
+  planEffect: string;
+  baselineTopPlan?: readonly [CropId, CropId, CropId];
+  baselineTopScore?: number;
+  probeTopPlan?: readonly [CropId, CropId, CropId];
+  probeTopScore?: number;
+  planChanged: boolean;
+}
+
+export interface SoilAssessment {
+  inputs: SoilInputStatus[];
+  nasaDecisionChain: {
+    temperatureRole: string;
+    precipitationRole: string;
+    soilInteractionRole: string;
+  };
+  baselineComparison: {
+    hasLocalSoilInputs: boolean;
+    changedInputs: string[];
+    summary: string;
+    baselineTopPlan?: readonly [CropId, CropId, CropId];
+    baselineTopScore?: number;
+    currentTopPlan?: readonly [CropId, CropId, CropId];
+    currentTopScore?: number;
+    topPlanChanged: boolean;
+    baselineQuotaMatchingCount?: number;
+    currentQuotaMatchingCount?: number;
+    cropChanges: SoilCropChange[];
+  };
+  singleInputChecks: SingleSoilInputProbe[];
+}
+
+export interface RotationSoilHealthMetrics {
+  label: string;
+  sequence: readonly RotationCycle[];
+  totalMonths: number;
+  uncroppedMonths: number;
+  fallowMonths: number;
+  intercropGapMonths: number;
+  distinctCropCount: number;
+  distinctFamilyCount: number;
+  /** Transitions that repeat the preceding botanical family, including across a fallow period. */
+  sameFamilyTransitions: number;
+  /** Transitions that repeat the exact preceding crop, including across a fallow period. */
+  sameCropTransitions: number;
+  /** Transitions from a legume (Fabaceae) into a cereal (Poaceae). */
+  legumeToCerealTransitions: number;
+  summary: string;
+}
+
+export interface SoilHealthComparison {
+  previousCrop: CropId;
+  current?: RotationSoilHealthMetrics;
+  recommended: RotationSoilHealthMetrics[];
+  requiredFieldEvidence: ReadonlyArray<{
+    claim: string;
+    whyCalendarIsInsufficient: string;
+    requiredMeasurement: string;
+  }>;
+}
+
 export type RecommendRequest = FieldSelection;
 
 export interface RecommendResponse {
@@ -227,6 +357,12 @@ export interface RecommendResponse {
   climate: ClimateSummary;
   /** Scores and plans are returned only inside the modeled pilot region. */
   applicability?: RegionApplicability;
+  /** Role of the selected climate query point, NASA POWER grid cell, and optional drawn parcel boundary. */
+  spatialContext?: SpatialContext;
+  /** Local soil inputs, their FAO/regional sources and assumptions, NASA data role, and single-input sensitivity. */
+  soilAssessment?: SoilAssessment;
+  /** Comparison of botanical family repetition, uncropped duration, and required field evidence for soil health claims. */
+  soilHealth?: SoilHealthComparison;
   /** Empty outside the modeled pilot region. */
   suitability: CropSuitability[];
   /** Highest-ranked first, up to three distinct plans. */

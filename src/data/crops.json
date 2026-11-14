@@ -18,6 +18,7 @@
     "soilPh": { "min": 6, "max": 7 },
     "irrigationSensitivity": "medium",
     "yieldResponseKy": { "value": 1.05, "basis": "reference", "source": "FAO Irrigation and Drainage Paper 56, table 24, winter wheat" },
+    "rootingDepthM": { "min": 1.5, "max": 1.8 },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 1.5–1.8 m for winter wheat in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [
@@ -51,6 +52,7 @@
     "soilPh": { "min": 6.5, "max": 7.5 },
     "irrigationSensitivity": "medium",
     "yieldResponseKy": { "value": 1.05, "basis": "analog", "source": "FAO Irrigation and Drainage Paper 56, table 24. Barley is not listed, so the winter wheat value is used as the closest autumn-sown cereal." },
+    "rootingDepthM": { "min": 1.0, "max": 1.5 },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 1.0–1.5 m in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [
@@ -84,6 +86,7 @@
     "soilPh": { "min": 6, "max": 8.5 },
     "irrigationSensitivity": "medium",
     "yieldResponseKy": { "value": 0.85, "basis": "regional_trial", "source": "Tarı and Bahçeci (2022), early sowing in Konya. Late sowing gave 0.91." },
+    "rootingDepthM": { "min": 0.6, "max": 1.0 },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 0.6–1.0 m in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [
@@ -117,6 +120,7 @@
     "soilPh": { "min": 5.5, "max": 7.5 },
     "irrigationSensitivity": "low",
     "yieldResponseKy": { "value": 1.15, "basis": "analog", "source": "FAO Irrigation and Drainage Paper 56, table 24. Lentil is not listed, so the pea value is used as the closest pulse." },
+    "rootingDepthM": { "min": 0.6, "max": 0.8 },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 0.6–0.8 m in suitable soils.",
     "dataConfidence": "low",
     "limitations": [
@@ -150,6 +154,7 @@
     "soilPh": { "min": 6, "max": 7.5 },
     "irrigationSensitivity": "medium",
     "yieldResponseKy": { "value": 1.02, "basis": "regional_trial", "source": "Gündüz et al. (2018), two-year mean in Konya. FAO-56 table 24 lists 0.95." },
+    "rootingDepthM": { "min": 0.8, "max": 1.5 },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 0.8–1.5 m in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [
@@ -183,6 +188,7 @@
     "soilPh": { "min": 6, "max": 7.5 },
     "irrigationSensitivity": "high",
     "yieldResponseKy": { "value": 1.25, "basis": "reference", "source": "FAO Irrigation and Drainage Paper 56, table 24, maize" },
+    "rootingDepthM": { "min": 1.0, "max": 1.7 },
     "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 1.0–1.7 m for grain maize in suitable soils.",
     "dataConfidence": "moderate",
     "limitations": [

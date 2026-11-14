@@ -1,6 +1,12 @@
 import type { ClimateSummary, CropFeasibility, CropSuitability, FieldSelection } from "../../types/api";
 import type { AgronomicCropProfile } from "./profiles";
-import { assessWaterBalance, MIN_RAINFED_RELATIVE_YIELD } from "./water-balance";
+import {
+  assessWaterBalance,
+  MAX_STORED_SOIL_WATER_MM,
+  MIN_RAINFED_RELATIVE_YIELD,
+  resolveSoilWaterStorage,
+  SOIL_TEXTURE_WATER_MM_PER_M,
+} from "./water-balance";
 
 type FactorCode =
   | "ACTIVE_SEASON_TEMPERATURE"
@@ -19,6 +25,7 @@ type WarningCode =
   | "WATER_COVERAGE_INSUFFICIENT"
   | "WATER_SEASONS_EXCLUDED"
   | "SOIL_PH_NOT_PROVIDED"
+  | "SOIL_STORAGE_DEFAULT_ASSUMED"
   | "PROFILE_SOIL_PH_UNAVAILABLE"
   | "WATER_DEFICIT_WITHOUT_IRRIGATION"
   | "INSUFFICIENT_CLIMATE_EVIDENCE";
@@ -135,7 +142,7 @@ export function assessCropTransition(
 export function assessCropSuitability(
   crop: AgronomicCropProfile,
   climate: SuitabilityClimate,
-  field: Pick<FieldSelection, "irrigation" | "measuredSoilPh">,
+  field: Pick<FieldSelection, "irrigation" | "measuredSoilPh" | "soilTexture" | "rootingDepthCm">,
   previousCrop?: AgronomicCropProfile,
 ): SuitabilityResult {
   const { calendar, temperatureC, soilPh } = crop;
@@ -143,7 +150,8 @@ export function assessCropSuitability(
   const warnings: { code: WarningCode; message: string }[] = [];
   const exclusions: Array<CropFeasibility["reasons"][number]> = [];
   const temperature = completeTemperatureSeasons(climate, calendar.activeStartMonth, calendar.activeEndMonth);
-  const water = assessWaterBalance(crop, climate);
+  const soilStorage = resolveSoilWaterStorage(crop, field);
+  const water = assessWaterBalance(crop, climate, field);
   // A gap can hide a poor season, so each climate metric needs at least half of its expected seasons.
   const temperatureSufficient = temperature.seasons.length > 0 &&
     temperature.seasons.length >= Math.ceil(temperature.expected / 2);
@@ -193,12 +201,17 @@ export function assessCropSuitability(
 
   const irrigated = field.irrigation === "available";
   if (water.sufficient && water.balance) {
-    const { rainfedRelativeYield, netIrrigationRequirementMm, seasons } = water.balance;
+    const { rainfedRelativeYield, netIrrigationRequirementMm, seasons, soilStorageCapMm, effectiveRootDepthM } = water.balance;
     const rainfedPercentage = 100 * rainfedRelativeYield;
     const score = irrigated
       ? rainfedPercentage * IRRIGATED_RAINFED_WEIGHT + 100 * (1 - IRRIGATED_RAINFED_WEIGHT)
       : rainfedPercentage;
-    const explanation = `Across ${seasons} complete water year(s), the model estimates rainfed yield at ${rainfedPercentage.toFixed(1)}% of water-unlimited yield. Net irrigation to meet full demand averages ${netIrrigationRequirementMm.toFixed(1)} mm per season.`;
+    const storageNote = soilStorage.customized
+      ? ` Preseason soil water storage is capped at ${soilStorageCapMm.toFixed(1)} mm (${
+        field.soilTexture ? SOIL_TEXTURE_WATER_MM_PER_M[field.soilTexture].label.toLowerCase() : `${MAX_STORED_SOIL_WATER_MM} mm/m reference`
+      } over a ${effectiveRootDepthM?.toFixed(2)} m effective root zone).`
+      : "";
+    const explanation = `Across ${seasons} complete water year(s), the model estimates rainfed yield at ${rainfedPercentage.toFixed(1)}% of water-unlimited yield. Net irrigation to meet full demand averages ${netIrrigationRequirementMm.toFixed(1)} mm per season.${storageNote}`;
     weightedFactors.push({ weight: WEIGHTS.water, factor: {
       code: "SEASONAL_WATER_BALANCE",
       label: "Seasonal water balance",
@@ -221,6 +234,13 @@ export function assessCropSuitability(
       exclusions.push(reason);
       warnings.push(reason);
     }
+  }
+
+  if (!soilStorage.customized) {
+    warnings.push({
+      code: "SOIL_STORAGE_DEFAULT_ASSUMED",
+      message: `Local soil texture and root-zone depth were not provided; preseason soil water storage uses the default ${MAX_STORED_SOIL_WATER_MM} mm regional cap.`,
+    });
   }
 
   const measuredPh = field.measuredSoilPh;

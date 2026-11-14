@@ -1,4 +1,4 @@
-import type { ClimateSummary, CropWaterBalance } from "../../types/api";
+import type { ClimateSummary, CropWaterBalance, FieldSelection, SoilTexture } from "../../types/api";
 import type { AgronomicCropProfile } from "./profiles";
 
 /**
@@ -8,6 +8,63 @@ import type { AgronomicCropProfile } from "./profiles";
  */
 export const SOIL_RECHARGE_EFFICIENCY = 0.6;
 export const MAX_STORED_SOIL_WATER_MM = 130;
+export const DEFAULT_FIELD_ROOTING_DEPTH_M = 1.0;
+export const MIN_ROOTING_DEPTH_CM = 20;
+export const MAX_ROOTING_DEPTH_CM = 200;
+
+/**
+ * Extractable preseason soil water capacity per meter of effective root zone by texture class,
+ * anchored to FAO-56 table 19 available water ranges and the 130 mm/m Konya trial benchmark.
+ */
+export const SOIL_TEXTURE_WATER_MM_PER_M: Readonly<Record<SoilTexture, {
+  label: string;
+  mmPerM: number;
+  faoRangeMmPerM: string;
+}>> = {
+  coarse: { label: "Coarse (sandy / loamy sand)", mmPerM: 90, faoRangeMmPerM: "60–120 mm/m" },
+  medium: { label: "Medium (loam / silt loam)", mmPerM: 130, faoRangeMmPerM: "110–180 mm/m" },
+  fine: { label: "Fine (clay loam / clay)", mmPerM: 170, faoRangeMmPerM: "150–230 mm/m" },
+};
+
+export type SoilWaterOptions = Pick<FieldSelection, "soilTexture" | "rootingDepthCm">;
+
+export interface SoilStorageResolution {
+  capMm: number;
+  customized: boolean;
+  capacityMmPerM: number;
+  fieldDepthM: number;
+  effectiveRootDepthM?: number;
+}
+
+export function resolveSoilWaterStorage(
+  crop: AgronomicCropProfile,
+  soil?: SoilWaterOptions,
+): SoilStorageResolution {
+  const texture = soil?.soilTexture;
+  const depthCm = soil?.rootingDepthCm;
+  const hasDepth = typeof depthCm === "number" && Number.isFinite(depthCm) &&
+    depthCm >= MIN_ROOTING_DEPTH_CM && depthCm <= MAX_ROOTING_DEPTH_CM;
+  if (!texture && !hasDepth) {
+    return {
+      capMm: MAX_STORED_SOIL_WATER_MM,
+      customized: false,
+      capacityMmPerM: MAX_STORED_SOIL_WATER_MM,
+      fieldDepthM: DEFAULT_FIELD_ROOTING_DEPTH_M,
+    };
+  }
+
+  const capacityMmPerM = texture ? SOIL_TEXTURE_WATER_MM_PER_M[texture].mmPerM : MAX_STORED_SOIL_WATER_MM;
+  const fieldDepthM = hasDepth ? depthCm / 100 : DEFAULT_FIELD_ROOTING_DEPTH_M;
+  const effectiveRootDepthM = Math.min(fieldDepthM, crop.rootingDepthM.max);
+  const capMm = Math.round(capacityMmPerM * effectiveRootDepthM * 10) / 10;
+  return {
+    capMm,
+    customized: true,
+    capacityMmPerM,
+    fieldDepthM,
+    effectiveRootDepthM,
+  };
+}
 
 /**
  * Rainfed crops expected to yield less than this share of their water-unlimited yield stay out of plans.
@@ -42,9 +99,14 @@ export function relativeYield(ky: number, supplyShare: number): number {
  * the growing season plus the months since the previous season ended, and counts only when all
  * twelve months have complete rainfall.
  */
-export function assessWaterBalance(crop: AgronomicCropProfile, climate: WaterClimate): WaterAssessment {
+export function assessWaterBalance(
+  crop: AgronomicCropProfile,
+  climate: WaterClimate,
+  soil?: SoilWaterOptions,
+): WaterAssessment {
   const { growingStartMonth, growingEndMonth } = crop.calendar;
   const fullWaterNeedMm = crop.waterRequirementMm.max;
+  const storage = resolveSoilWaterStorage(crop, soil);
   const seasonLength = (growingEndMonth - growingStartMonth + 12) % 12 + 1;
   const leadMonths = 12 - seasonLength;
   const firstMonth = monthIndex(climate.provenance.period.start);
@@ -78,7 +140,7 @@ export function assessWaterBalance(crop: AgronomicCropProfile, climate: WaterCli
     }
     if (!complete) continue;
 
-    const stored = Math.min(MAX_STORED_SOIL_WATER_MM, SOIL_RECHARGE_EFFICIENCY * before);
+    const stored = Math.min(storage.capMm, SOIL_RECHARGE_EFFICIENCY * before);
     const supply = Math.min(fullWaterNeedMm, during + stored);
     const share = supply / fullWaterNeedMm;
     seasons++;
@@ -98,6 +160,8 @@ export function assessWaterBalance(crop: AgronomicCropProfile, climate: WaterCli
       seasons,
       seasonRainfallMm: totals.rain / seasons,
       storedSoilWaterMm: totals.stored / seasons,
+      soilStorageCapMm: storage.capMm,
+      ...(storage.effectiveRootDepthM !== undefined ? { effectiveRootDepthM: storage.effectiveRootDepthM } : {}),
       fullWaterNeedMm,
       rainfedSupplyShare: totals.share / seasons,
       rainfedRelativeYield: totals.yield / seasons,

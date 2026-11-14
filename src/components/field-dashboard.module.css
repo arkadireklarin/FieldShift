@@ -214,6 +214,93 @@
   line-height: 1.45;
 }
 
+.spatialBox {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: #f8faf6;
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.spatialRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.spatialRow span,
+.spatialHint,
+.spatialParcel p {
+  color: var(--muted);
+}
+
+.spatialParcel {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.spatialParcel strong,
+.spatialHint strong {
+  color: var(--ink);
+}
+
+.centroidButton {
+  justify-self: start;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #89a792;
+  border-radius: 0.45rem;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.centroidButton:hover {
+  background: #dce9d9;
+}
+
+.soilGroup {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8faf6;
+}
+
+.soilGroup legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.soilGroup legend span {
+  color: var(--muted);
+  font-size: 0.73rem;
+  font-weight: 400;
+}
+
+.soilGroup > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.42;
+}
+
 .mapLoading {
   display: grid;
   place-items: center;

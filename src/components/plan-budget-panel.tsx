@@ -26,7 +26,7 @@ interface Saved {
 }
 
 interface PlanBudgetPanelProps {
-  result: Pick<RecommendResponse, "suitability" | "rotationComparison" | "rotationStrategies" | "rotationStressTest">;
+  result: Pick<RecommendResponse, "suitability" | "rotationComparison" | "rotationStrategies" | "rotationStressTest" | "spatialContext">;
   irrigated: boolean;
 }
 
@@ -54,6 +54,10 @@ function amount(value: string | undefined): number | null {
 
 function Money({ value }: { value: number }) {
   return <>{moneyFormat.format(value)} TL/da</>;
+}
+
+function ParcelMoney({ value }: { value: number }) {
+  return <>{moneyFormat.format(value)} TL</>;
 }
 
 export default function PlanBudgetPanel({ result, irrigated }: PlanBudgetPanelProps) {
@@ -97,6 +101,7 @@ export default function PlanBudgetPanel({ result, irrigated }: PlanBudgetPanelPr
     };
   }
   const irrigation = irrigated ? { system: saved.system, waterCostTlPerM3: amount(saved.waterCost) } : undefined;
+  const parcelAreaDa = result.spatialContext?.parcel?.areaDa;
 
   function setFigure(cycle: RotationCycle, figure: Figure, value: string) {
     setSaved((current) => ({
@@ -198,6 +203,20 @@ export default function PlanBudgetPanel({ result, irrigated }: PlanBudgetPanelPr
                     <dt>Gross margin per year</dt>
                     <dd><Money value={outcome.budget.grossMarginTlPerDaPerYear} /></dd>
                   </div>
+                  {parcelAreaDa !== undefined && parcelAreaDa > 0 && (
+                    <>
+                      {irrigated && (
+                        <div>
+                          <dt>Whole-parcel pumped water ({waterFormat.format(parcelAreaDa)} da)</dt>
+                          <dd>{waterFormat.format(outcome.budget.irrigationWaterM3PerDa * parcelAreaDa)} m³</dd>
+                        </div>
+                      )}
+                      <div className={styles.margin} data-loss={outcome.budget.grossMarginTlPerDa < 0 || undefined}>
+                        <dt>Whole-parcel gross margin per year ({waterFormat.format(parcelAreaDa)} da)</dt>
+                        <dd><ParcelMoney value={outcome.budget.grossMarginTlPerDaPerYear * parcelAreaDa} />/yr</dd>
+                      </div>
+                    </>
+                  )}
                 </dl>
               )}
             </li>

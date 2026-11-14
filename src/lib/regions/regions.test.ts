@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { describeApplicability, findServiceRegion } from "./index";
+import { describeSpatialContext, nasaGridCellBounds } from "./parcel";
 
 describe("validated service region", () => {
   it.each([
@@ -31,5 +32,35 @@ describe("validated service region", () => {
       message: expect.stringMatching(/outside the approximate Central Anatolia pilot area.*NASA POWER climate history/),
     });
     expect(describeApplicability(undefined)).not.toHaveProperty("region");
+  });
+
+  it("computes the NASA POWER grid cell and drawn parcel geometry near Çumra", () => {
+    const cumra = { lat: 37.5667, lon: 32.775 };
+    const cell = nasaGridCellBounds(cumra);
+    expect(cell).toEqual({
+      south: 37.5,
+      north: 38,
+      west: 32.5,
+      east: 33.125,
+      resolutionDegrees: { lat: 0.5, lon: 0.625 },
+    });
+
+    const parcelPolygon = [
+      { lat: 37.565, lon: 32.772 },
+      { lat: 37.569, lon: 32.772 },
+      { lat: 37.569, lon: 32.778 },
+      { lat: 37.565, lon: 32.778 },
+      { lat: 37.565, lon: 32.772 },
+    ];
+    const context = describeSpatialContext(cumra, parcelPolygon);
+    expect(context.parcel).toBeDefined();
+    expect(context.parcel?.vertexCount).toBe(4);
+    expect(context.parcel?.areaDa).toBeGreaterThan(200);
+    expect(context.parcel?.areaDa).toBeLessThan(260);
+    expect(context.parcel?.queryPointInsideParcel).toBe(true);
+    expect(context.parcel?.withinSingleNasaGridCell).toBe(true);
+    expect(context.parcel?.withinValidatedRegion).toBe(true);
+    expect(context.climateRole).toContain("0.5° × 0.625°");
+    expect(context.parcelRole).toContain("whole-field totals");
   });
 });

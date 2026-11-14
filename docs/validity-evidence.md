@@ -10,9 +10,22 @@
 | Sıralama saha sonuçlarıyla karşılaştırılmamıştı | Model, yayımlanmış üç saha denemesinin sekiz sonucuyla her istekte yeniden karşılaştırılır. |
 | Maliyet değerlendirilmemişti | Arayüzde üreticinin kendi rakamlarıyla brüt marj hesabı var. İşletim maliyeti aşağıda. |
 
-## Su dengesi
+## Su dengesi ve yerel toprak girdileri
 
-Sezonluk su arzı, sezon içi yağış ile ekim öncesi aylardan toprağa taşınan sudur. Taşınan su, ekim öncesi yağışın %60'ı kadardır ve 130 mm ile sınırlıdır. İki Konya denemesinde sulanmayan parseller topraktan yaklaşık 128 mm çekti. Bu, ekim öncesi uzun yıllar yağışının %55–67'sidir.
+Sezonluk su arzı, sezon içi yağış ile ekim öncesi aylardan toprağa taşınan sudur. Taşınan su, ekim öncesi yağışın %60'ı kadardır. Yerel toprak tekstürü ve kök bölgesi derinliği girilmezse üst sınır 130 mm olarak alınır (iki Konya denemesinde sulanmayan parsellerin topraktan çektiği ~128 mm su). Üretici yerel toprak bilgisini girdiğinde sezon öncesi depolama üst sınırı `tekstür kapasitesi (mm/m) × min(tarla kök derinliği, ürün maksimum kök derinliği)` bağıntısıyla hesaplanır ([FAO-56 çizelge 19 ve 22](https://www.fao.org/4/x0490e/x0490e0e.htm)):
+
+| Toprak tekstürü | Su tutma kapasitesi | FAO-56 çizelge 19 aralığı |
+|---|---:|---|
+| Kaba (`coarse`, kumlu / tınlı kum) | 90 mm/m | 60–120 mm/m |
+| Orta (`medium`, tınlı / siltli tın) | 130 mm/m | 110–180 mm/m (Konya referansı) |
+| İnce (`fine`, killi tın / killi) | 170 mm/m | 150–230 mm/m |
+
+Kışlık tahıllar (buğday, arpa) Ekim–Temmuz arasında yetiştiği için NASA POWER kış yağışını sezon içinde doğrudan kullanır; baharlık ürünler (mercimek, nohut, ayçiçeği, mısır) ise kış yağışının ekim öncesinde kök bölgesinde depolanmasına bağımlıdır. Bu nedenle sığ bir kaliş/sert katman (ör. 50 cm kök derinliği → 65 mm depolama sınırı) veya kaba bünyeli toprak (90 mm/m) baharlık ürünlerin depolanan suyunu düşürüp sulama ihtiyacını artırırken kışlık tahılların su dengesini korur.
+
+## Toprak sağlığı ve parsel–ızgara rolü
+
+- **Harita parseli ve NASA POWER ızgarası:** Seçilen nokta, çevresindeki 0,5° × 0,625° NASA POWER ızgara hücresinden günlük sıcaklık (`T2M`) ve yağış (`PRECTOTCORR`) serisini sorgular. Çizilen parsel sınırı ise tarlanın jeodezik alanını (dekar, `da`) hesaplayarak dekar başına su kotasını (`m³/da`) ve brüt marjı (`TL/da`) tüm tarla toplamına ölçekler; aynı ızgara hücresi içindeki tarlalar arasındaki farkı yerel toprak girdileri (tekstür, kök derinliği, pH) belirler.
+- **Aile tekrarı ve ana ürünsüz süre:** `soilHealth` çıktısı mevcut rotasyon (ör. buğday → nadas → buğday) ile önerilen planları botanik aile tekrarı, aynı ürün tekrarı, baklagil → tahıl geçişi ve ana ürünsüz aylar (nadas + ekim arası boşluk) üzerinden karşılaştırır. Takvim çıktısı tek başına toprak örtüsü, organik madde artışı veya bakiye azot kanıtı sayılmaz; bu iddialar için sırasıyla tarla içi bitki örtüsü/anız gözlemi, aynı derinlik ve mevsimde çok yıllı laboratuvar organik madde analizi ve ekim öncesi mineral azot testi şarttır.
 
 Beklenen verim payı FAO-33 bağıntısıyla hesaplanır: `1 − Ky × (1 − arz / tam su ihtiyacı)`. Tam su ihtiyacı ürün profilindeki üst değerdir.
 

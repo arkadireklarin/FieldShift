@@ -32,6 +32,8 @@ export interface AgronomicCropProfile extends CropProfile {
    * Analog values borrow the closest listed crop.
    */
   yieldResponseKy: { value: number; basis: "regional_trial" | "reference" | "analog"; source: string };
+  /** Maximum effective rooting depth range in meters from FAO-56, table 22. */
+  rootingDepthM: Range;
   rootCharacteristics: string | null;
   /** Confidence in using these references for regional screening. */
   dataConfidence: "low" | "moderate";

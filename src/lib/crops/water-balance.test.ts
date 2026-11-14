@@ -72,7 +72,41 @@ describe("seasonal water balance", () => {
 
     expect(rainfed.sort()).toEqual(["barley", "chickpea", "lentil", "wheat"]);
     for (const crop of CROP_PROFILES) {
-      expect(assessWaterBalance(crop, snapshot)).toMatchObject({ sufficient: true, balance: { seasons: 4 } });
+      expect(assessWaterBalance(crop, snapshot)).toMatchObject({ sufficient: true, balance: { seasons: 4, soilStorageCapMm: 130 } });
     }
+  });
+
+  it("scales preseason soil water storage by FAO-56 texture class and crop-bounded root depth", () => {
+    const chickpea = getCropProfile("chickpea");
+    const lentil = getCropProfile("lentil");
+    const wheat = getCropProfile("wheat");
+    const wetPreseason = climateFixture(40); // 6 lead months * 40 mm = 240 mm -> 0.6 * 240 = 144 mm recharge
+
+    const defaultRun = assessWaterBalance(chickpea, wetPreseason).balance!;
+    expect(defaultRun.soilStorageCapMm).toBe(130);
+    expect(defaultRun.storedSoilWaterMm).toBe(130);
+
+    // Shallow 50 cm caliche layer caps all crops at 0.50 m * 130 mm/m = 65 mm
+    const shallow = assessWaterBalance(chickpea, wetPreseason, { rootingDepthCm: 50 }).balance!;
+    expect(shallow.soilStorageCapMm).toBe(65);
+    expect(shallow.effectiveRootDepthM).toBe(0.5);
+    expect(shallow.storedSoilWaterMm).toBe(65);
+    expect(shallow.netIrrigationRequirementMm).toBeGreaterThan(defaultRun.netIrrigationRequirementMm);
+
+    // Coarse texture (90 mm/m) caps lentil (0.8 m max root) at 72 mm and chickpea (1.0 m max root) at 90 mm
+    const coarseLentil = assessWaterBalance(lentil, wetPreseason, { soilTexture: "coarse" }).balance!;
+    const coarseChickpea = assessWaterBalance(chickpea, wetPreseason, { soilTexture: "coarse" }).balance!;
+    expect(coarseLentil.soilStorageCapMm).toBe(72);
+    expect(coarseLentil.effectiveRootDepthM).toBe(0.8);
+    expect(coarseChickpea.soilStorageCapMm).toBe(90);
+    expect(coarseChickpea.effectiveRootDepthM).toBe(1);
+
+    // Deep fine soil (170 mm/m, 150 cm) allows wheat (1.8 m max root) to use 1.5 m (255 mm cap), while lentil stops at 0.8 m (136 mm cap)
+    const deepFineWheat = assessWaterBalance(wheat, wetPreseason, { soilTexture: "fine", rootingDepthCm: 150 }).balance!;
+    const deepFineLentil = assessWaterBalance(lentil, wetPreseason, { soilTexture: "fine", rootingDepthCm: 150 }).balance!;
+    expect(deepFineWheat.soilStorageCapMm).toBe(255);
+    expect(deepFineWheat.effectiveRootDepthM).toBe(1.5);
+    expect(deepFineLentil.soilStorageCapMm).toBe(136);
+    expect(deepFineLentil.effectiveRootDepthM).toBe(0.8);
   });
 });

@@ -2,7 +2,9 @@ import { CROP_PROFILES, getCropProfile } from "../../../lib/crops/profiles";
 import { assessCropSuitability } from "../../../lib/crops/suitability";
 import { getClimate } from "../../../lib/nasa";
 import { describeApplicability, findServiceRegion } from "../../../lib/regions";
+import { describeSpatialContext } from "../../../lib/regions/parcel";
 import { analyzeRotations, compareRotationCalendars } from "../../../lib/rotation";
+import { buildSoilAssessment, buildSoilHealthComparison } from "../../../lib/rotation/soil-sensitivity";
 import { getModelEvidence } from "../../../lib/validation/evidence";
 import type { RecommendResponse } from "../../../types/api";
 import { climateUnavailable, invalidInput, readFieldSelection } from "../validation";
@@ -21,10 +23,12 @@ export async function POST(request: Request): Promise<Response> {
     const climate = await getClimate(field.location);
     const region = findServiceRegion(field.location);
     const applicability = describeApplicability(region);
+    const spatialContext = describeSpatialContext(field.location, field.polygon);
     if (!region) {
       return Response.json({
         climate,
         applicability,
+        spatialContext,
         suitability: [],
         rotations: [],
         rotationStrategies: [],
@@ -49,11 +53,13 @@ export async function POST(request: Request): Promise<Response> {
       year: nextMonth.getUTCFullYear(),
       month: nextMonth.getUTCMonth() + 1,
     };
-    const { rotations, strategies, harvestDeadline, irrigationQuota, calendarBenchmark, rotationStressTest } =
-      analyzeRotations(climate, field, firstAvailableMonth);
+    const analysis = analyzeRotations(climate, field, firstAvailableMonth);
+    const { rotations, strategies, harvestDeadline, irrigationQuota, calendarBenchmark, rotationStressTest } = analysis;
     const rotationComparison = field.currentRotation === undefined
       ? undefined
       : compareRotationCalendars(field.currentRotation, rotations, firstAvailableMonth);
+    const soilAssessment = buildSoilAssessment(climate, field, firstAvailableMonth, suitability, analysis);
+    const soilHealth = buildSoilHealthComparison(field.previousCrop, rotationComparison, rotations, strategies);
     const calendarScope = `Crop profiles use provisional main-season calendars for ${region.name}. Confirm local cultivar and planting dates before applying these rankings.`;
     const limitations = [
       ...climate.limitations,
@@ -71,6 +77,9 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({
       climate,
       applicability,
+      spatialContext,
+      soilAssessment,
+      soilHealth,
       suitability,
       rotations,
       rotationComparison,

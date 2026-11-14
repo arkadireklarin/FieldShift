@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ClimateMonth, ClimateSummary, FieldSelection } from "../../types/api";
-import { getCropProfile } from "../crops/profiles";
-import { analyzeRotations, rankRotations } from "./index";
+import snapshot from "../../data/validation/konya-nasa-power-2021-2025.json";
+import { CROP_PROFILES, getCropProfile } from "../crops/profiles";
+import { assessCropSuitability } from "../crops/suitability";
+import { analyzeRotations, compareRotationCalendars, rankRotations } from "./index";
+import { buildSoilAssessment, buildSoilHealthComparison } from "./soil-sensitivity";
 
 const field: FieldSelection = {
   location: { lat: 37.57, lon: 32.77 },
@@ -192,5 +195,104 @@ describe("rotation search priorities", () => {
     expect(relaxed.rotations.length).toBeGreaterThan(0);
     expect(relaxed.calendarBenchmark?.selected?.dryYearWaterM3PerDa).toBeLessThanOrEqual(600);
     expect(relaxed.calendarBenchmark?.baseline.calendar).toEqual(result.calendarBenchmark?.baseline.calendar);
+  });
+
+  it("changes water storage, suitability and top rotation when a single local soil input changes on the Konya NASA record", () => {
+    const konyaClimate: ClimateSummary = {
+      months: snapshot.months,
+      provenance: {
+        ...snapshot.provenance,
+        kind: "nasa_power",
+        source: "NASA POWER",
+        spatialScope: "grid_cell",
+        parameters: ["T2M", "T2M_MAX", "T2M_MIN", "PRECTOTCORR"],
+      },
+      limitations: [],
+    };
+    const baseField: FieldSelection = {
+      location: { lat: 37.5667, lon: 32.775 },
+      previousCrop: "wheat",
+      irrigation: "unavailable",
+      currentRotation: ["wheat", "fallow", "wheat"],
+    };
+    const shallowField: FieldSelection = { ...baseField, rootingDepthCm: 50 };
+    const previous = getCropProfile(baseField.previousCrop);
+    const shallowSuitability = CROP_PROFILES.map((crop) => assessCropSuitability(crop, konyaClimate, shallowField, previous));
+    const shallowAnalysis = analyzeRotations(konyaClimate, shallowField, start);
+    const assessment = buildSoilAssessment(konyaClimate, shallowField, start, shallowSuitability, shallowAnalysis);
+
+    expect(assessment.baselineComparison.hasLocalSoilInputs).toBe(true);
+    const chickpeaChange = assessment.baselineComparison.cropChanges.find(({ crop }) => crop === "chickpea")!;
+    const wheatChange = assessment.baselineComparison.cropChanges.find(({ crop }) => crop === "wheat")!;
+    // Chickpea relies on winter rain stored before March planting, so a 50 cm (65 mm) cap lowers its stored water and score
+    expect(chickpeaChange.baselineStorageCapMm).toBe(130);
+    expect(chickpeaChange.currentStorageCapMm).toBe(65);
+    expect(chickpeaChange.currentStoredWaterMm!).toBeLessThan(chickpeaChange.baselineStoredWaterMm!);
+    expect(chickpeaChange.currentNetIrrigationMm!).toBeGreaterThan(chickpeaChange.baselineNetIrrigationMm!);
+    expect(chickpeaChange.currentScore!).toBeLessThan(chickpeaChange.baselineScore!);
+    // Autumn-sown wheat uses winter rain in-season; its Aug-Sep preseason recharge is below 65 mm so its stored water is unchanged
+    expect(wheatChange.currentStoredWaterMm).toBeCloseTo(wheatChange.baselineStoredWaterMm!);
+
+    // On an irrigated field (where all 6 crops compete), changing a single soil input (pH or root depth) shifts crop scores and top plans
+    const irrigatedBase: FieldSelection = {
+      location: { lat: 37.5667, lon: 32.775 },
+      previousCrop: "sunflower",
+      irrigation: "available",
+      measuredSoilPh: 5.6,
+    };
+    const irrigatedSuitability = CROP_PROFILES.map((crop) =>
+      assessCropSuitability(crop, konyaClimate, irrigatedBase, getCropProfile(irrigatedBase.previousCrop)),
+    );
+    const irrigatedAnalysis = analyzeRotations(konyaClimate, irrigatedBase, { year: 2026, month: 12 });
+    const irrigatedAssessment = buildSoilAssessment(
+      konyaClimate,
+      irrigatedBase,
+      { year: 2026, month: 12 },
+      irrigatedSuitability,
+      irrigatedAnalysis,
+    );
+    expect(irrigatedAssessment.baselineComparison.hasLocalSoilInputs).toBe(true);
+    expect(irrigatedAssessment.baselineComparison.cropChanges.some((c) => c.baselineScore !== c.currentScore)).toBe(true);
+    expect(irrigatedAssessment.singleInputChecks).toHaveLength(3);
+
+    // Holding all other inputs fixed near Çumra, changing only rootingDepthCm to 50 cm pushes chickpea irrigation from 190 to 255 m³/da (above the 210 m³/da cap) and flips the top plan
+    const cumraLikeClimate = historicalFixture(20, 40);
+    const cumraQuotaField: FieldSelection = {
+      location: { lat: 37.5667, lon: 32.775 },
+      previousCrop: "wheat",
+      irrigation: "available",
+      irrigationQuotaM3PerDa: 210,
+      rootingDepthCm: 50,
+    };
+    const cumraSuitability = CROP_PROFILES.map((crop) =>
+      assessCropSuitability(crop, cumraLikeClimate, cumraQuotaField, getCropProfile(cumraQuotaField.previousCrop)),
+    );
+    const cumraAnalysis = analyzeRotations(cumraLikeClimate, cumraQuotaField, { year: 2026, month: 12 });
+    const cumraAssessment = buildSoilAssessment(
+      cumraLikeClimate,
+      cumraQuotaField,
+      { year: 2026, month: 12 },
+      cumraSuitability,
+      cumraAnalysis,
+    );
+    expect(cumraAssessment.baselineComparison.topPlanChanged).toBe(true);
+    expect(cumraAssessment.baselineComparison.baselineQuotaMatchingCount).toBeGreaterThan(
+      cumraAssessment.baselineComparison.currentQuotaMatchingCount!,
+    );
+
+    const comparison = compareRotationCalendars(baseField.currentRotation!, shallowAnalysis.rotations, start);
+    const soilHealth = buildSoilHealthComparison(
+      baseField.previousCrop,
+      comparison,
+      shallowAnalysis.rotations,
+      shallowAnalysis.strategies,
+    );
+    expect(soilHealth.current?.sameFamilyTransitions).toBe(2);
+    expect(soilHealth.current?.sameCropTransitions).toBe(2);
+    expect(soilHealth.current?.fallowMonths).toBe(12);
+    expect(soilHealth.current?.uncroppedMonths).toBe(23);
+    expect(soilHealth.recommended[0].sameFamilyTransitions).toBeLessThan(soilHealth.current!.sameFamilyTransitions);
+    expect(soilHealth.recommended[0].uncroppedMonths).toBeLessThan(soilHealth.current!.uncroppedMonths);
+    expect(soilHealth.requiredFieldEvidence).toHaveLength(3);
   });
 });

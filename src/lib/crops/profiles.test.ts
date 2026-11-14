@@ -18,6 +18,8 @@ describe("crop profile data", () => {
       expect(profile.temperatureC.min).toBeLessThan(profile.temperatureC.max);
       expect(profile.waterRequirementMm.min).toBeGreaterThan(0);
       expect(profile.waterRequirementMm.min).toBeLessThan(profile.waterRequirementMm.max);
+      expect(profile.rootingDepthM.min).toBeGreaterThan(0);
+      expect(profile.rootingDepthM.min).toBeLessThan(profile.rootingDepthM.max);
       if (profile.soilPh) {
         expect(profile.soilPh.min).toBeGreaterThanOrEqual(0);
         expect(profile.soilPh.min).toBeLessThan(profile.soilPh.max);
