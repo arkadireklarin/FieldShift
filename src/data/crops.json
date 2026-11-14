@@ -1,0 +1,194 @@
+{
+  "wheat": {
+    "id": "wheat",
+    "name": "Wheat",
+    "family": "Poaceae",
+    "category": "cereal",
+    "validationStatus": "provisional",
+    "calendar": {
+      "plantingStartMonth": 10,
+      "plantingEndMonth": 11,
+      "growingStartMonth": 10,
+      "growingEndMonth": 7,
+      "activeStartMonth": 4,
+      "activeEndMonth": 6
+    },
+    "temperatureC": { "min": 15, "max": 23 },
+    "waterRequirementMm": { "min": 450, "max": 650 },
+    "soilPh": { "min": 6, "max": 7 },
+    "irrigationSensitivity": "medium",
+    "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 1.5–1.8 m for winter wheat in suitable soils.",
+    "dataConfidence": "moderate",
+    "limitations": [
+      "Calendar assumes autumn-sown bread wheat in Central Anatolia. Active growth months are a model approximation.",
+      "Temperature and pH are broad EcoCrop reference bands. The FAO water range is a generic seasonal crop-water estimate. Rainfed crops can use less water and produce different yields."
+    ],
+    "references": [
+      { "title": "European Commission JRC MARS Bulletin on Turkey, winter cereal sowing in Konya", "url": "https://publications.jrc.ec.europa.eu/repository/bitstream/JRC109733/kjna29011enna.pdf" },
+      { "title": "Cayci et al. (2009), Central Anatolia rotation field trial", "url": "https://doi.org/10.1016/j.still.2008.09.004" },
+      { "title": "FAO EcoCrop data sheet for Triticum aestivum", "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=2114" },
+      { "title": "FAO Irrigation Water Management, seasonal crop water needs, table 5", "url": "https://www.fao.org/4/s2022e/s2022e02.htm" },
+      { "title": "FAO Irrigation and Drainage Paper 56, rooting depths and water stress, tables 22 and 24", "url": "https://www.fao.org/4/x0490e/x0490e0e.htm" }
+    ]
+  },
+  "barley": {
+    "id": "barley",
+    "name": "Barley",
+    "family": "Poaceae",
+    "category": "cereal",
+    "validationStatus": "provisional",
+    "calendar": {
+      "plantingStartMonth": 10,
+      "plantingEndMonth": 11,
+      "growingStartMonth": 10,
+      "growingEndMonth": 7,
+      "activeStartMonth": 4,
+      "activeEndMonth": 6
+    },
+    "temperatureC": { "min": 15, "max": 20 },
+    "waterRequirementMm": { "min": 450, "max": 650 },
+    "soilPh": { "min": 6.5, "max": 7.5 },
+    "irrigationSensitivity": "medium",
+    "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 1.0–1.5 m in suitable soils.",
+    "dataConfidence": "moderate",
+    "limitations": [
+      "Calendar assumes autumn-sown barley in Central Anatolia. The active growth window and relative irrigation sensitivity are model assumptions.",
+      "Temperature and pH are broad EcoCrop reference bands. FAO groups barley, oats and wheat in its generic seasonal crop-water range."
+    ],
+    "references": [
+      { "title": "European Commission JRC MARS Bulletin on Turkey, winter cereal sowing in Konya", "url": "https://publications.jrc.ec.europa.eu/repository/bitstream/JRC109733/kjna29011enna.pdf" },
+      { "title": "Bayraktar (2023), Ministry-sourced Central Anatolia cereal calendar, table 4.4", "url": "https://open.metu.edu.tr/bitstream/handle/11511/103432/Doktora%20Tezi_METU-ESS_SaideSiminBayrktar.pdf" },
+      { "title": "FAO EcoCrop data sheet for Hordeum vulgare", "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1232" },
+      { "title": "FAO Irrigation Water Management, seasonal crop water needs, table 5", "url": "https://www.fao.org/4/s2022e/s2022e02.htm" },
+      { "title": "FAO Irrigation and Drainage Paper 56, rooting depths, table 22", "url": "https://www.fao.org/4/x0490e/x0490e0e.htm" }
+    ]
+  },
+  "chickpea": {
+    "id": "chickpea",
+    "name": "Chickpea",
+    "family": "Fabaceae",
+    "category": "legume",
+    "validationStatus": "provisional",
+    "calendar": {
+      "plantingStartMonth": 3,
+      "plantingEndMonth": 4,
+      "growingStartMonth": 3,
+      "growingEndMonth": 8,
+      "activeStartMonth": 5,
+      "activeEndMonth": 7
+    },
+    "temperatureC": { "min": 15, "max": 29 },
+    "waterRequirementMm": { "min": 300, "max": 560 },
+    "soilPh": { "min": 6, "max": 8.5 },
+    "irrigationSensitivity": "medium",
+    "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 0.6–1.0 m in suitable soils.",
+    "dataConfidence": "moderate",
+    "limitations": [
+      "Calendar approximates spring sowing and summer harvest in Central Anatolia. Active growth months are a model approximation.",
+      "Temperature and pH use broad EcoCrop reference bands. The provisional rounded water band reflects supplemental to fuller irrigation treatments in a two-year Konya experiment. Rainfed treatments used less water."
+    ],
+    "references": [
+      { "title": "Trakya Agricultural Research Institute, chickpea cultivation and sowing window in Türkiye", "url": "https://arastirma.tarimorman.gov.tr/ttae/Sayfalar/Detay.aspx?SayfaId=61" },
+      { "title": "Cayci et al. (2009), Central Anatolia rotation field trial", "url": "https://doi.org/10.1016/j.still.2008.09.004" },
+      { "title": "Tarı and Bahçeci (2022), Konya chickpea sowing and irrigation field trial, table 8", "url": "https://dergipark.org.tr/en/download/article-file/3056004" },
+      { "title": "FAO EcoCrop data sheet for Cicer arietinum", "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=2479" },
+      { "title": "FAO Irrigation and Drainage Paper 56, rooting depths, table 22", "url": "https://www.fao.org/4/x0490e/x0490e0e.htm" }
+    ]
+  },
+  "lentil": {
+    "id": "lentil",
+    "name": "Lentil",
+    "family": "Fabaceae",
+    "category": "legume",
+    "validationStatus": "provisional",
+    "calendar": {
+      "plantingStartMonth": 2,
+      "plantingEndMonth": 3,
+      "growingStartMonth": 2,
+      "growingEndMonth": 7,
+      "activeStartMonth": 4,
+      "activeEndMonth": 6
+    },
+    "temperatureC": { "min": 15, "max": 29 },
+    "waterRequirementMm": { "min": 250, "max": 360 },
+    "soilPh": { "min": 5.5, "max": 7.5 },
+    "irrigationSensitivity": "low",
+    "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 0.6–0.8 m in suitable soils.",
+    "dataConfidence": "low",
+    "limitations": [
+      "Calendar represents a spring-sown green lentil scenario in Central Anatolia. Late-February planting assumes suitable field conditions and July is a conservative harvest cutoff. Winter cultivars have different windows.",
+      "Temperature and pH are broad EcoCrop reference bands. The provisional water band is informed by reported seasonal use in northern Syrian field experiments. Applicability to spring-sown lentil near Konya is unverified."
+    ],
+    "references": [
+      { "title": "Trakya Agricultural Research Institute, lentil cultivation and sowing windows in Türkiye", "url": "https://arastirma.tarimorman.gov.tr/ttae/Sayfalar/Detay.aspx?SayfaId=81" },
+      { "title": "Cayci et al. (2009), Central Anatolia rotation field trial", "url": "https://doi.org/10.1016/j.still.2008.09.004" },
+      { "title": "Oweis et al. (2004), lentil irrigation field trial, table 5", "url": "https://repo.mel.cgiar.org/items/b027cb34-f34a-4547-bd87-cb593f6d611a" },
+      { "title": "FAO EcoCrop data sheet for Lens culinaris", "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=7209" },
+      { "title": "FAO Irrigation and Drainage Paper 56, rooting depths, table 22", "url": "https://www.fao.org/4/x0490e/x0490e0e.htm" }
+    ]
+  },
+  "sunflower": {
+    "id": "sunflower",
+    "name": "Sunflower",
+    "family": "Asteraceae",
+    "category": "oilseed",
+    "validationStatus": "provisional",
+    "calendar": {
+      "plantingStartMonth": 5,
+      "plantingEndMonth": 5,
+      "growingStartMonth": 5,
+      "growingEndMonth": 9,
+      "activeStartMonth": 6,
+      "activeEndMonth": 8
+    },
+    "temperatureC": { "min": 17, "max": 34 },
+    "waterRequirementMm": { "min": 580, "max": 650 },
+    "soilPh": { "min": 6, "max": 7.5 },
+    "irrigationSensitivity": "medium",
+    "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 0.8–1.5 m in suitable soils.",
+    "dataConfidence": "moderate",
+    "limitations": [
+      "Calendar represents main-season oilseed sunflower near Konya. The narrower planting window reflects local frost risk. Active growth months are a model approximation.",
+      "Temperature and pH are broad EcoCrop reference bands. The provisional seasonal water-use band comes from one Konya irrigation experiment and varies with climate and management."
+    ],
+    "references": [
+      { "title": "Konya planting-date simulation, Optimizing agricultural production for economic sustainability of sunflower across climatic zones", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12909816/" },
+      { "title": "Trakya Agricultural Research Institute, Sunflower Cultural Practices in Turkey", "url": "https://arastirma.tarimorman.gov.tr/ttae/Sayfalar/EN/Detay.aspx?SayfaId=142" },
+      { "title": "Gündüz et al., Konya field trial on sunflower water stress and seasonal water consumption", "url": "https://dergipark.org.tr/tr/download/article-file/595097" },
+      { "title": "FAO EcoCrop data sheet for Helianthus annuus", "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1191" },
+      { "title": "FAO Irrigation and Drainage Paper 56, rooting depths and water stress, tables 22 and 24", "url": "https://www.fao.org/4/x0490e/x0490e0e.htm" }
+    ]
+  },
+  "maize": {
+    "id": "maize",
+    "name": "Maize",
+    "family": "Poaceae",
+    "category": "cereal",
+    "validationStatus": "provisional",
+    "calendar": {
+      "plantingStartMonth": 4,
+      "plantingEndMonth": 5,
+      "growingStartMonth": 4,
+      "growingEndMonth": 10,
+      "activeStartMonth": 6,
+      "activeEndMonth": 9
+    },
+    "temperatureC": { "min": 18, "max": 33 },
+    "waterRequirementMm": { "min": 500, "max": 800 },
+    "soilPh": { "min": 6, "max": 7.5 },
+    "irrigationSensitivity": "high",
+    "rootCharacteristics": "FAO-56 lists a maximum effective rooting depth of 1.0–1.7 m for grain maize in suitable soils.",
+    "dataConfidence": "moderate",
+    "limitations": [
+      "Calendar represents main-season grain maize in Central Anatolia and uses a conservative October harvest cutoff. Cultivar maturity and local frost dates can shift the window.",
+      "Temperature and pH use broad FAO reference bands. The water range is for approximate seasonal crop water use under well-watered conditions. Flowering is particularly sensitive to water stress."
+    ],
+    "references": [
+      { "title": "Konya field trial of maize planting dates and harvest, table 5", "url": "https://dergipark.org.tr/tr/pub/selcukjafsci/article/1619517" },
+      { "title": "FAO EcoCrop data sheet for Zea mays ssp. mays", "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=238663" },
+      { "title": "FAO Soils Bulletin 56, crop pH reference ranges measured in water", "url": "https://www.fao.org/4/s8930e/s8930e.pdf" },
+      { "title": "FAO Irrigation and Drainage Paper 66, maize water use and sensitivity by growth stage", "url": "https://www.fao.org/4/i2800e/i2800e02.pdf" },
+      { "title": "FAO Irrigation and Drainage Paper 56, rooting depths and water stress, tables 22 and 24", "url": "https://www.fao.org/4/x0490e/x0490e0e.htm" }
+    ]
+  }
+}
